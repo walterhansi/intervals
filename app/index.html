@@ -65,12 +65,16 @@
     -webkit-text-stroke: 0.045em #fff; paint-order: stroke fill;
     box-shadow: 0 0 0 6px rgba(0,0,0,.55); }
   #circle.blink { animation: blink 1.3s ease-in-out infinite; }
-  .arrow { position: absolute; top: 12px; width: 15%; max-width: 70px; display: none; }
+  .arrow { position: absolute; top: 22px; width: 15%; max-width: 70px; display: none; }
   .arrow svg { width: 100%; height: auto; display: block; }
   .arrow path { fill: rgba(0,0,0,.62); }
-  #arrowDown { left: 12px; }
-  #arrowUp { right: 12px; }
+  #arrowDown { left: 22px; }
+  #arrowUp { right: 22px; }
   .arrow.on { display: block; }
+  #rect { box-shadow: inset 0 0 0 0 transparent; transition: background .25s, box-shadow .4s; }
+  #nextHint { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); white-space: nowrap;
+    font-size: 21px; font-weight: 700; font-variant-numeric: tabular-nums; color: rgba(0,0,0,.62); }
+  #rect.dark #nextHint { color: rgba(255,255,255,.42); }
   @keyframes blink {
     0%, 30%   { background: var(--c); }
     50%, 80%  { background: #000; }
@@ -215,6 +219,7 @@
         <div id="btStatusLine"><span id="btDot"></span><span id="btStatus">Nicht verbunden</span></div>
         <div id="btDevice"></div>
       </div>
+      <button id="btQuick" class="primary" hidden style="width:100%;font-size:18px;padding:16px;margin-bottom:8px"></button>
       <button id="btConnect" class="primary">Verbinden</button>
       <div id="btScroll">
         <div id="btSuccess" hidden>
@@ -228,6 +233,7 @@
           <p id="wzText"></p>
           <div class="wz-q">Ist das Problem behoben?</div>
           <div class="row"><button id="wzYes">Ja</button><button id="wzNo">Nein</button></div>
+          <button id="wzAll" style="width:100%;margin-top:10px;background:transparent;color:#a1a1aa;font-weight:500;font-size:14px">Uhr nicht in der Liste? Alle Bluetooth-Geräte anzeigen</button>
         </div>
         <div id="wzEnd" class="card" hidden style="margin-top:10px">
           <h3 style="margin:0 0 8px">Alle Schritte durchlaufen</h3>
@@ -257,6 +263,7 @@
         <div id="circle">--</div>
         <div class="rinfo" id="countdown"></div>
         <div class="rinfo" id="targetRange"></div>
+        <div id="nextHint"></div>
         <div class="arrow" id="arrowDown"><svg viewBox="0 0 40 48"><path d="M13 0h14v26h13L20 48 0 26h13z"/></svg></div>
         <div class="arrow" id="arrowUp"><svg viewBox="0 0 40 48"><path d="M13 48h14V22h13L20 0 0 22h13z"/></svg></div>
         <div class="rinfo" id="trainTime"></div>
@@ -319,6 +326,12 @@
     <h3>In Liste sichern</h3>
     <input type="text" id="saveName" placeholder="Name, z. B. 6× 3/2 min" maxlength="40">
     <div class="row"><button id="saveCancel">Abbrechen</button><button id="saveOk" class="primary">Speichern</button></div>
+  </dialog>
+
+  <dialog id="dlgResume">
+    <h3>Training fortsetzen?</h3>
+    <p id="resumeText" style="color:#d4d4d8;line-height:1.45;margin:0 0 16px"></p>
+    <div class="row"><button id="resumeNo">Verwerfen</button><button id="resumeYes" class="primary">Fortsetzen</button></div>
   </dialog>
 
   <dialog id="dlgLoad">
@@ -411,77 +424,183 @@
   function zoneOf(b) { let z = -1; st.zones.forEach((m, i) => { if (b >= m) z = i; }); return z; }
 
   // ---------- Bluetooth ----------
-  let device = null, wantConnected = false, retryTimer = null, retryDelay = 1000, btState = "off";
+  // Robustheit:
+  //  - Wiederverbinden ohne Geräteliste (die Uhr bleibt gemerkt)
+  //  - beim App-Start automatische Suche nach der zuletzt genutzten Uhr (wenn Chrome es kann)
+  //  - Überwachung: kommen 8 s keine Pulswerte, wird die Verbindung neu aufgebaut
+  //  - schnelle Wiederholungen (max. 5 s Pause) und sofortiger Versuch beim Zurückkehren in die App
+  const HAS_BT = "bluetooth" in navigator;
+  let device = null, wantConnected = false, connecting = false, userDisconnected = false;
+  let retryTimer = null, retryDelay = 800, hrChar = null, lastNotifyAt = 0, autoRunning = false;
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
 
   function setBt(state, text) {
-    btState = state;
     $("btStatus").textContent = text;
     $("btDot").className = state === "ok" ? "ok" : state === "wait" ? "wait" : "";
     $("navBadge").className = "badge" + (state === "ok" ? " ok" : "");
-    $("btConnect").textContent = (state === "ok" || state === "wait") && wantConnected ? "Trennen" : "Verbinden";
-    $("btConnect").classList.toggle("primary", !(wantConnected));
+    $("btConnect").textContent = wantConnected ? "Trennen" : "Verbinden";
+    $("btConnect").classList.toggle("primary", !wantConnected);
+    if (wantConnected) $("btQuick").hidden = true;
   }
 
-  const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
+  function onHrValue(e) {
+    const dv = e.target.value, flags = dv.getUint8(0);
+    lastNotifyAt = Date.now();
+    onHeartRate((flags & 1) ? dv.getUint16(1, true) : dv.getUint8(1));
+  }
+
+  function adoptDevice(dev) {
+    if (device === dev) return;
+    if (device) device.removeEventListener("gattserverdisconnected", onGattDisconnected);
+    device = dev;
+    device.addEventListener("gattserverdisconnected", onGattDisconnected);
+    save("lastDeviceId", dev.id); save("lastDeviceName", dev.name || "");
+  }
 
   async function gattConnect() {
-    const server = await device.gatt.connect();
-    const svc = await server.getPrimaryService("heart_rate");
-    const ch = await svc.getCharacteristic("heart_rate_measurement");
-    ch.addEventListener("characteristicvaluechanged", e => {
-      const dv = e.target.value, flags = dv.getUint8(0);
-      onHeartRate((flags & 1) ? dv.getUint16(1, true) : dv.getUint8(1));
-    });
-    await ch.startNotifications();
+    if (connecting) throw new Error("busy");
+    connecting = true;
+    try {
+      const server = await withTimeout(device.gatt.connect(), 10000);
+      const svc = await withTimeout(server.getPrimaryService("heart_rate"), 6000);
+      const ch = await withTimeout(svc.getCharacteristic("heart_rate_measurement"), 6000);
+      if (hrChar) hrChar.removeEventListener("characteristicvaluechanged", onHrValue);
+      hrChar = ch;
+      ch.addEventListener("characteristicvaluechanged", onHrValue);
+      await withTimeout(ch.startNotifications(), 6000);
+      lastNotifyAt = Date.now();
+    } catch (e) {
+      try { device.gatt.disconnect(); } catch {}
+      throw e;
+    } finally { connecting = false; }
+  }
+
+  function onConnected() {
+    wantConnected = true; userDisconnected = false; autoRunning = false;
+    retryDelay = 800; clearTimeout(retryTimer);
+    setBt("ok", "Verbunden");
+    $("btDevice").textContent = device.name || "";
+    requestWakeLock();
   }
 
   function onGattDisconnected() {
     if (!wantConnected) return;
     setBt("wait", "Verbindung verloren – verbinde neu …");
+    renderMeasure();
     scheduleReconnect();
   }
   function scheduleReconnect() {
     clearTimeout(retryTimer);
+    if (!wantConnected) return;
     retryTimer = setTimeout(async () => {
-      if (!wantConnected) return;
-      try { await withTimeout(gattConnect(), 12000); retryDelay = 1000; setBt("ok", "Verbunden"); }
-      catch { retryDelay = Math.min(retryDelay * 2, 15000); scheduleReconnect(); }
+      if (!wantConnected || connecting) { if (wantConnected) scheduleReconnect(); return; }
+      try { await gattConnect(); onConnected(); }
+      catch {
+        retryDelay = Math.min(retryDelay * 1.6, 5000);
+        if (wantConnected) { setBt("wait", "Verbindung verloren – neuer Versuch …"); scheduleReconnect(); }
+      }
     }, retryDelay);
   }
 
-  // Muss direkt aus einem Tipp heraus aufgerufen werden (Vorgabe von Chrome)
-  async function attemptConnect() {
-    if (!("bluetooth" in navigator)) {
+  // Wächter: Verbindung steht, aber es kommen keine Werte mehr → neu aufbauen
+  setInterval(() => {
+    if (wantConnected && device && device.gatt.connected && !connecting && Date.now() - lastNotifyAt > 8000) {
+      setBt("wait", "Kein Puls-Signal – verbinde neu …");
+      lastNotifyAt = Date.now();
+      try { device.gatt.disconnect(); } catch {}
+    }
+  }, 2000);
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    if (wantConnected && device && !device.gatt.connected) { retryDelay = 300; scheduleReconnect(); }
+    else if (!wantConnected && !userDisconnected) autoConnect();
+  });
+
+  // Geräteliste von Chrome. Muss direkt aus einem Tipp heraus aufgerufen werden.
+  async function attemptConnect(all = false) {
+    if (!HAS_BT) {
       toast("Dieser Browser kann kein Web Bluetooth. Bitte Chrome verwenden.", true, 6000);
       return false;
     }
     let dev;
-    try { dev = await navigator.bluetooth.requestDevice({ filters: [{ services: ["heart_rate"] }] }); }
-    catch { return false; }
-    stopDemo();
-    if (device !== dev) { device = dev; device.addEventListener("gattserverdisconnected", onGattDisconnected); }
-    wantConnected = true;
-    setBt("wait", "Verbinde …");
-    $("btDevice").textContent = device.name || "";
     try {
-      await withTimeout(gattConnect(), 12000);
-      retryDelay = 1000;
-      setBt("ok", "Verbunden");
-      requestWakeLock();
-      return true;
-    } catch {
-      wantConnected = false;
-      try { device.gatt.disconnect(); } catch {}
+      dev = await navigator.bluetooth.requestDevice(all
+        ? { acceptAllDevices: true, optionalServices: ["heart_rate"] }
+        : { filters: [{ services: ["heart_rate"] }] });
+    } catch { return false; }
+    autoRunning = false; stopDemo();
+    adoptDevice(dev);
+    setBt("wait", "Verbinde …");
+    $("btDevice").textContent = dev.name || "";
+    try { await gattConnect(); onConnected(); return true; }
+    catch (e) {
       setBt("off", "Nicht verbunden");
+      if (all && /service|not found|NotFound/i.test(String(e))) toast("Dieses Gerät sendet keinen Puls. Ist Herzfrequenz-Push auf der Uhr aktiv?", true, 6000);
       return false;
     }
   }
 
+  // Zuletzt genutzte Uhr ohne Geräteliste (Chrome mit „getDevices“)
+  async function knownDevice() {
+    if (!HAS_BT || !navigator.bluetooth.getDevices) return null;
+    try {
+      const list = await navigator.bluetooth.getDevices();
+      const id = load("lastDeviceId", null);
+      return list.find(d => d.id === id) || null;
+    } catch { return null; }
+  }
+  async function connectKnown(dev, waitMs) {
+    // Chrome verbindet bekannte Geräte erst zuverlässig, wenn es sie in Reichweite gehört hat
+    if (dev.watchAdvertisements) {
+      const ac = new AbortController();
+      let heard = false;
+      try {
+        await dev.watchAdvertisements({ signal: ac.signal });
+        await new Promise((res, rej) => {
+          const h = () => { clearTimeout(t); dev.removeEventListener("advertisementreceived", h); heard = true; res(); };
+          const t = setTimeout(() => { dev.removeEventListener("advertisementreceived", h); rej(new Error("timeout")); }, waitMs);
+          dev.addEventListener("advertisementreceived", h);
+        });
+      } catch (e) {
+        ac.abort();
+        if (e.message === "timeout") throw e;   // Uhr nicht in Reichweite / sendet nicht
+      }
+      if (heard) ac.abort();
+    }
+    adoptDevice(dev);
+    await gattConnect();
+  }
+  function showQuick(dev) {
+    if (wantConnected || !dev) { $("btQuick").hidden = true; return; }
+    $("btQuick").textContent = `Mit „${dev.name || "letzter Uhr"}“ verbinden`;
+    $("btQuick").hidden = false;
+  }
+  async function autoConnect() {
+    if (autoRunning || wantConnected || demoTimer || userDisconnected) return;
+    const dev = await knownDevice();
+    if (!dev) return;
+    showQuick(dev);
+    autoRunning = true;
+    const name = dev.name || "Uhr";
+    while (autoRunning && !wantConnected && !demoTimer) {
+      if (document.visibilityState === "visible" && !connecting) {
+        setBt("wait", `Suche „${name}“ …`);
+        try { await connectKnown(dev, 8000); onConnected(); showSuccess(); break; }
+        catch { if (autoRunning && !wantConnected) setBt("off", "Nicht verbunden – suche weiter …"); }
+      }
+      await sleep(4000);
+    }
+    autoRunning = false;
+  }
+
   function disconnectBt() {
-    wantConnected = false; clearTimeout(retryTimer);
+    wantConnected = false; userDisconnected = true; autoRunning = false; clearTimeout(retryTimer);
     try { device && device.gatt.connected && device.gatt.disconnect(); } catch {}
     setBt("off", "Nicht verbunden");
     $("btSuccess").hidden = true;
+    knownDevice().then(showQuick);
     renderMeasure();
   }
 
@@ -519,6 +638,7 @@
 
   $("btConnect").onclick = async () => {
     if (wantConnected) { disconnectBt(); return; }
+    userDisconnected = false;
     setWizardBusy(true);
     const ok = await attemptConnect();
     setWizardBusy(false);
@@ -533,12 +653,33 @@
     else showWizard(wzStep + 1, "Noch keine Verbindung. Nächster Schritt:");
   };
   $("wzNo").onclick = () => showWizard(wzStep + 1, "");
+  $("wzAll").onclick = async () => {
+    setWizardBusy(true);
+    const ok = await attemptConnect(true);
+    setWizardBusy(false);
+    if (ok) showSuccess();
+  };
+  $("btQuick").onclick = async () => {
+    const dev = await knownDevice();
+    if (!dev) { $("btQuick").hidden = true; return; }
+    autoRunning = false; userDisconnected = false; stopDemo();
+    setWizardBusy(true); $("btQuick").disabled = true;
+    setBt("wait", `Suche „${dev.name || "Uhr"}“ …`);
+    let ok = false;
+    for (let i = 0; i < 3 && !ok; i++) {
+      try { await connectKnown(dev, 8000); onConnected(); ok = true; } catch { await sleep(800); }
+    }
+    setWizardBusy(false); $("btQuick").disabled = false;
+    if (ok) showSuccess();
+    else { setBt("off", "Nicht verbunden"); showWizard(wzStep < 0 ? 0 : wzStep, "Die Uhr wurde nicht gefunden. Probiere diesen Schritt:"); }
+  };
   $("wzRestart").onclick = () => showWizard(0, "");
 
   // Simulation
   let demoTimer = null, demoT = 0;
   function startDemo() {
     if (wantConnected) disconnectBt();
+    autoRunning = false;
     $("demoBtn").textContent = "Simulation stoppen";
     $("demoBtn").classList.add("green");
     setBt("ok", "Simulation läuft");
@@ -584,10 +725,13 @@
   new ResizeObserver(sizeCircle).observe($("rect"));
 
   function currentTarget(now) {
-    if (!train.running || !train.interval) return { target: null, remain: null };
+    if (!train.running || !train.interval) return { target: null, remain: null, next: null };
     const el = now - train.startAt; let acc = 0;
-    for (const seg of train.segs) { acc += seg.dur; if (el < acc) return { target: seg.c, remain: acc - el }; }
-    return { target: null, remain: null };
+    for (let i = 0; i < train.segs.length; i++) {
+      acc += train.segs[i].dur;
+      if (el < acc) return { target: train.segs[i].c, remain: acc - el, next: i + 1 < train.segs.length ? train.segs[i + 1].c : "end" };
+    }
+    return { target: null, remain: null, next: null };
   }
 
   function renderMeasure() {
@@ -595,7 +739,7 @@
     const ok = signalOk();
     const z = ok ? zoneOf(hr) : null;
     const cur = !ok ? NOSIG : z < 0 ? BELOW : ZONE_COLORS[z];
-    const { target, remain } = currentTarget(now);
+    const { target, remain, next } = currentTarget(now);
     const rectColor = target !== null ? COLORS6[target] : cur;
     const c = $("circle"), r = $("rect");
     c.textContent = ok ? hr : "--";
@@ -613,8 +757,40 @@
     if ($("targetRange").innerHTML !== tr) $("targetRange").innerHTML = tr;
     const tt = train.startAt ? `<div class="lbl">Training</div>${fmtUp((train.running ? now : train.endAt) - train.startAt)}` : "";
     if ($("trainTime").innerHTML !== tt) $("trainTime").innerHTML = tt;
+    // Vorwarnung: 5 s vor dem Wechsel Rand in der nächsten Soll-Farbe + dezenter Hinweis
+    const warn = remain !== null && remain <= 5000 && next !== null;
+    const shadow = warn && next !== "end" ? `inset 0 0 0 14px ${COLORS6[next]}` : "inset 0 0 0 0 transparent";
+    if (r.style.boxShadow !== shadow) r.style.boxShadow = shadow;
+    let nh = "";
+    if (warn) {
+      if (next === "end") nh = "Gleich: Ende";
+      else if (next === 5) nh = "Gleich: frei";
+      else nh = `Gleich: Z${next + 1} · ` + (next < 4 ? `${st.zones[next]}–${st.zones[next + 1] - 1}` : `ab ${st.zones[4]}`);
+    }
+    if ($("nextHint").textContent !== nh) $("nextHint").textContent = nh;
   }
   setInterval(renderMeasure, 250);
+
+  // Laufendes Training sichern, damit es nach einem Absturz fortgesetzt werden kann
+  function saveTrain() {
+    save("train", train.running ? { startAt: train.startAt, interval: train.interval, segs: train.segs } : null);
+  }
+  function offerResume() {
+    const sv = load("train", null);
+    if (!sv || !sv.startAt || Date.now() - sv.startAt > 12 * 3600 * 1000) { save("train", null); return; }
+    const total = sv.interval ? sv.segs.reduce((a, x) => a + x.dur, 0) : 0;
+    const el = Date.now() - sv.startAt;
+    $("resumeText").textContent = `Ein Training lief noch (seit ${fmtUp(el)})` +
+      (sv.interval ? (el < total ? `, Intervall noch ${fmt(total - el)}.` : `; das Intervall ist inzwischen abgelaufen.`) : ".");
+    $("dlgResume").showModal();
+    $("resumeYes").onclick = () => {
+      Object.assign(train, { running: true, startAt: sv.startAt, endAt: 0, interval: !!sv.interval, segs: sv.segs || [] });
+      $("dlgResume").close(); show("s-measure");
+      requestWakeLock(); updateMeasureButtons(); renderMeasure();
+      if (!wantConnected) toast("Training läuft weiter. Die Uhr verbindet sich – falls nicht, unter Bluetooth verbinden.", false, 6000);
+    };
+    $("resumeNo").onclick = () => { save("train", null); $("dlgResume").close(); };
+  }
 
   function updateMeasureButtons() {
     $("btnStart").disabled = train.running;
@@ -625,18 +801,18 @@
   $("btnStart").onclick = () => {
     if (train.running) return;
     Object.assign(train, { running: true, startAt: Date.now(), endAt: 0, interval: false, segs: [] });
-    requestWakeLock(); updateMeasureButtons(); renderMeasure();
+    saveTrain(); requestWakeLock(); updateMeasureButtons(); renderMeasure();
   };
   $("btnStartIv").onclick = () => {
     if (train.running || !st.locked) return;
     const segs = st.rows.map(r => ({ dur: (r.m * 60 + r.s) * 1000, c: r.c }));
     Object.assign(train, { running: true, startAt: Date.now(), endAt: 0, interval: true, segs });
-    requestWakeLock(); updateMeasureButtons(); renderMeasure();
+    saveTrain(); requestWakeLock(); updateMeasureButtons(); renderMeasure();
   };
   $("btnStop").onclick = () => {
     if (!train.running) return;
     Object.assign(train, { running: false, endAt: Date.now(), interval: false });
-    updateMeasureButtons(); renderMeasure();
+    saveTrain(); updateMeasureButtons(); renderMeasure();
   };
   longPress($("btnLock"), 2000, {
     onStart: () => $("btnLock").classList.add("charging"),
@@ -946,6 +1122,8 @@
   setBt("off", "Nicht verbunden");
   show("s-bt");
   renderMeasure();
+  offerResume();
+  autoConnect();
 })();
 </script>
 </body>

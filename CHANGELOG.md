@@ -6,6 +6,18 @@ Format: neueste Version oben. Die Versionsnummer steht in der Datei `VERSION`.
 - **x.Y.0** (Minor): neue Funktionen
 - **X.0.0** (Major): grundlegende Umbauten
 
+## 1.1.0 – 2026-10-09
+
+- **Training fortsetzen:** Wird die App während eines Trainings geschlossen oder stürzt ab, bietet sie beim nächsten Öffnen „Training fortsetzen?“ an. Trainingszeit und Intervall laufen nach der echten Uhrzeit weiter.
+- **Vorwarnung:** 5 Sekunden vor jedem Abschnittswechsel zeigt ein Rand die nächste Soll-Farbe, oben steht dezent „Gleich: Z4 · 152–170“ (bzw. „frei“ / „Ende“). Beides verschwindet nach dem Wechsel.
+- **Bluetooth schneller und robuster:**
+  - Die zuletzt genutzte Uhr wird gemerkt; beim Öffnen der App sucht die App automatisch nach ihr (sofern Chrome das unterstützt), zusätzlich Knopf „Mit … verbinden“ ohne Geräteliste.
+  - Wächter: kommen 8 Sekunden keine Pulswerte, wird die Verbindung automatisch neu aufgebaut.
+  - Schnellere Wiederholversuche (höchstens 5 Sekunden Pause), sofortiger Versuch beim Zurückkehren in die App.
+  - Zeitlimits für jeden Verbindungsschritt, damit nichts hängen bleibt.
+  - Hilfe-Assistent: „Uhr nicht in der Liste? Alle Bluetooth-Geräte anzeigen“.
+- Pfeile etwas nach innen gerückt.
+
 ## 1.0.0 – 2026-10-09
 
 Erste Version.
