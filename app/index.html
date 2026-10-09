@@ -1,0 +1,952 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#000000">
+<title>ao Puls-Intervalle</title>
+<meta name="description" content="Große Pulsanzeige mit Intervalltraining fürs Radfahren – Puls per Bluetooth von der Amazfit-Uhr.">
+<meta name="app-version" content="__APP_VERSION__">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<style>
+  :root {
+    --bg: #000;
+    --panel: #121214;
+    --panel2: #1c1c20;
+    --line: #2a2a30;
+    --fg: #f2f2f2;
+    --dim: #8b8b93;
+    --accent: #0a84ff;
+    --ok: #22c55e;
+    --nav-h: 68px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overscroll-behavior: none; }
+  body { display: flex; justify-content: center; }
+  #app { position: relative; width: 100%; max-width: 480px; height: 100dvh; display: flex; flex-direction: column;
+    padding-top: env(safe-area-inset-top); overflow: hidden; }
+  #screens { position: relative; flex: 1; min-height: 0; }
+  .screen { position: absolute; inset: 0; display: none; flex-direction: column; padding: 10px 10px 8px; }
+  .screen.active { display: flex; }
+  h2 { margin: 4px 2px 10px; font-size: 20px; font-weight: 700; }
+  button { font: inherit; color: var(--fg); background: var(--panel2); border: 0; border-radius: 12px;
+    padding: 12px 10px; font-weight: 600; font-size: 15px; cursor: pointer; user-select: none;
+    -webkit-user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
+  button:disabled { opacity: .3; cursor: default; }
+  button.primary { background: var(--accent); }
+  button.green { background: #15803d; }
+  button:not(:disabled):active { filter: brightness(1.35); }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+
+  /* ---------- Navigation ---------- */
+  nav { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 6px 8px calc(8px + env(safe-area-inset-bottom));
+    background: #0a0a0b; border-top: 1px solid var(--line); height: calc(var(--nav-h) + env(safe-area-inset-bottom)); }
+  nav button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    padding: 6px 2px; background: transparent; color: var(--dim); font-size: 12px; font-weight: 600; border-radius: 10px; }
+  nav button svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  nav button.active { color: var(--fg); background: var(--panel2); }
+  nav button .badge { width: 7px; height: 7px; border-radius: 50%; background: #c33; position: absolute; margin: -16px 0 0 22px; }
+  nav button .badge.ok { background: var(--ok); }
+  nav button { position: relative; }
+
+  /* ---------- Measure ---------- */
+  #rect { position: relative; flex: 1; min-height: 0; border-radius: 18px; background: #161618; transition: background .25s; }
+  #circle { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; font-weight: 800; font-variant-numeric: tabular-nums;
+    letter-spacing: -0.04em; line-height: 1; background: var(--c); color: #000;
+    -webkit-text-stroke: 0.045em #fff; paint-order: stroke fill;
+    box-shadow: 0 0 0 6px rgba(0,0,0,.55); }
+  #circle.blink { animation: blink 1.3s ease-in-out infinite; }
+  .arrow { position: absolute; top: 12px; width: 15%; max-width: 70px; display: none; }
+  .arrow svg { width: 100%; height: auto; display: block; }
+  .arrow path { fill: rgba(0,0,0,.62); }
+  #arrowDown { left: 12px; }
+  #arrowUp { right: 12px; }
+  .arrow.on { display: block; }
+  @keyframes blink {
+    0%, 30%   { background: var(--c); }
+    50%, 80%  { background: #000; }
+    100%      { background: var(--c); }
+  }
+  .rinfo { position: absolute; bottom: 9px; font-size: 21px; font-variant-numeric: tabular-nums; font-weight: 700;
+    color: rgba(0,0,0,.62); }
+  #rect.dark .rinfo { color: rgba(255,255,255,.42); }
+  #countdown { left: 14px; text-align: left; }
+  #trainTime { right: 14px; text-align: right; }
+  .rinfo .lbl { line-height: 1.15; }
+  #targetRange { left: 50%; transform: translateX(-50%); white-space: nowrap; text-align: center; }
+  #mctl { display: grid; grid-template-columns: 1fr 1.25fr 1fr 1.15fr; gap: 6px; margin-top: 8px; }
+  #mctl button { padding: 14px 4px; font-size: 14px; line-height: 1.15; }
+  #btnLock { position: relative; overflow: hidden; z-index: 41; }
+  #btnLock::after { content: ""; position: absolute; left: 0; bottom: 0; height: 4px; width: 0; background: #fff; }
+  #btnLock.charging::after { width: 100%; transition: width 2s linear; }
+  #app.locked #btnLock { background: #b91c1c; }
+  #shield { position: absolute; inset: 0; z-index: 40; display: none; }
+  #app.locked #shield { display: block; }
+  #app.locked nav, #app.locked #mctl button:not(#btnLock) { opacity: .25; }
+
+  /* ---------- Bluetooth ---------- */
+  .card { background: var(--panel); border-radius: 16px; padding: 14px; margin-bottom: 10px; }
+  #btStatusLine { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; }
+  #btDot { width: 14px; height: 14px; border-radius: 50%; background: #c33; flex: none; }
+  #btDot.ok { background: var(--ok); } #btDot.wait { background: #eab308; }
+  #btDevice { color: var(--dim); margin-top: 4px; font-size: 14px; min-height: 18px; }
+  #btConnect { width: 100%; font-size: 18px; padding: 16px; }
+  #btScroll { flex: 1; overflow-y: auto; min-height: 0; }
+  #btSuccess { text-align: center; padding: 18px 0 6px; }
+  #btSuccess svg { width: 150px; height: 150px; }
+  #btSuccess div { font-size: 22px; font-weight: 700; color: var(--ok); margin-top: 6px; }
+  .wz-count { color: var(--dim); font-size: 13px; text-transform: uppercase; letter-spacing: .08em; }
+  #wzNote { color: #fbbf24; font-size: 14px; margin-top: 6px; min-height: 0; }
+  #wzTitle { margin: 8px 0 6px; font-size: 20px; }
+  #wzText { margin: 0 0 14px; font-size: 16px; line-height: 1.45; color: #d4d4d8; }
+  .wz-q { font-weight: 700; margin-bottom: 8px; font-size: 16px; }
+  #wzYes { background: #15803d; font-size: 17px; padding: 14px; }
+  #wzNo { background: #7f1d1d; font-size: 17px; padding: 14px; }
+  details.demo { margin-top: 4px; color: var(--dim); }
+  details.demo summary { cursor: pointer; padding: 8px 2px; font-size: 14px; }
+  details.demo .card { color: var(--fg); }
+  .demo label { display: flex; align-items: center; gap: 8px; margin: 10px 0 6px; font-size: 15px; }
+  .demo input[type=range] { width: 100%; }
+
+  /* ---------- Zones ---------- */
+  .zrow { display: grid; grid-template-columns: 34px 1fr 84px 72px; align-items: center; gap: 10px;
+    background: var(--panel); border-radius: 14px; padding: 10px 12px; margin-bottom: 8px; }
+  .zsw { width: 34px; height: 34px; border-radius: 9px; }
+  .zname { font-weight: 700; font-size: 16px; }
+  .zname small { display: block; color: var(--dim); font-weight: 500; font-size: 13px; }
+  .zrow input { width: 100%; font: inherit; font-size: 20px; font-weight: 700; text-align: center; padding: 8px 4px;
+    background: #000; color: var(--fg); border: 1px solid var(--line); border-radius: 10px; }
+  .zrow input.bad { border-color: #ef4444; color: #ef4444; }
+  .zup { color: var(--dim); font-size: 14px; text-align: right; }
+  .zhead { display: grid; grid-template-columns: 34px 1fr 84px 72px; gap: 10px; padding: 0 12px 6px; color: var(--dim); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+  .zhead span:nth-child(3), .zhead span:nth-child(4) { text-align: center; }
+  .zhead span:nth-child(4) { text-align: right; }
+  .note { color: var(--dim); font-size: 13px; line-height: 1.45; margin: 6px 4px; }
+  .note i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; }
+  #zMsg { color: #ef4444; font-size: 14px; margin: 4px; min-height: 18px; }
+
+  /* ---------- Intervals ---------- */
+  #ivSummary { color: var(--dim); font-size: 14px; margin: -4px 2px 8px; display: flex; justify-content: space-between; }
+  #ivSummary b { color: var(--fg); }
+  #ivWrap { flex: 1; min-height: 0; overflow-y: auto; background: var(--panel); border-radius: 14px; padding: 4px 6px; }
+  .ivgrid { display: grid; grid-template-columns: 22px 92px 1fr 46px 46px; align-items: center; gap: 6px; }
+  #ivWrap.dnd .ivgrid { grid-template-columns: 30px 22px 92px 1fr 46px 46px; }
+  .ivgrid .handle { display: none; }
+  #ivWrap.dnd .ivgrid .handle { display: flex; }
+  .ivhead { position: sticky; top: 0; z-index: 2; background: var(--panel); padding: 8px 2px 6px; color: var(--dim);
+    font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+  .ivhead span:nth-last-child(-n+2) { text-align: center; }
+  .ivrow { padding: 5px 2px; border-top: 1px solid var(--line); background: var(--panel); }
+  .ivrow.dragging { background: #26262c; box-shadow: 0 6px 18px rgba(0,0,0,.6); position: relative; z-index: 3; border-radius: 10px; }
+  .nr { color: var(--dim); font-size: 13px; text-align: right; }
+  .time { display: flex; align-items: center; gap: 2px; font-weight: 700; }
+  .time input { width: 42px; font: inherit; font-size: 18px; font-weight: 700; text-align: center; padding: 8px 0;
+    background: #000; color: var(--fg); border: 1px solid var(--line); border-radius: 9px; }
+  .time input.bad { border-color: #ef4444; }
+  .cc { height: 40px; border-radius: 10px; padding: 0; font-size: 14px; font-weight: 800; color: rgba(0,0,0,.7);
+    border: 3px solid transparent; transition: transform .1s; }
+  .cc.pending { border: 3px dashed #fff; }
+  .cc.pressing { transform: scale(.92); }
+  .ck { display: flex; justify-content: center; align-items: center; height: 40px; }
+  .ck input { width: 26px; height: 26px; accent-color: var(--accent); margin: 0; }
+  .ck.del input { accent-color: #ef4444; }
+  .handle { align-items: center; justify-content: center; height: 40px; color: var(--dim); font-size: 22px;
+    touch-action: none; cursor: grab; user-select: none; }
+  #ivWrap.locked input, #ivWrap.locked .cc { pointer-events: none; }
+  #ivWrap.locked .time input, #ivWrap.locked .ck input { opacity: .55; }
+  #ivctl { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 8px; }
+  #ivctl button { padding: 12px 4px; font-size: 14px; }
+  #ivctl .w2 { grid-column: span 2; }
+  #ivctl .w3 { grid-column: span 3; }
+
+  /* ---------- Dialoge & Meldungen ---------- */
+  dialog { background: #17171a; color: var(--fg); border: 1px solid var(--line); border-radius: 18px; padding: 18px;
+    width: min(92vw, 420px); max-height: 80dvh; }
+  dialog::backdrop { background: rgba(0,0,0,.75); }
+  dialog h3 { margin: 0 0 12px; }
+  dialog input[type=text] { width: 100%; font: inherit; font-size: 18px; padding: 12px; border-radius: 10px;
+    border: 1px solid var(--line); background: #000; color: var(--fg); margin-bottom: 14px; }
+  .lib-item { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+  .lib-item small { display: block; color: var(--dim); }
+  .lib-item button { padding: 10px 12px; font-size: 14px; }
+  #libList { max-height: 50dvh; overflow-y: auto; margin-bottom: 12px; }
+  #toast { position: absolute; left: 12px; right: 12px; bottom: calc(var(--nav-h) + 12px); z-index: 60; background: #27272a;
+    color: var(--fg); padding: 12px 14px; border-radius: 12px; font-size: 15px; display: none; box-shadow: 0 8px 24px rgba(0,0,0,.6); }
+  #toast.err { background: #450a0a; color: #fecaca; }
+
+  /* ---------- PWA: Version, Update, PC-Hinweis ---------- */
+  #appVersion { color: #55555c; font-size: 12px; text-align: center; padding: 18px 0 6px; }
+  #updateBar { position: absolute; left: 10px; right: 10px; top: calc(10px + env(safe-area-inset-top)); z-index: 70;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #0b2a4a; color: #fff;
+    padding: 10px 10px 10px 14px; border-radius: 14px; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,.6); }
+  #updateBar[hidden] { display: none; }
+  #updateBar button { padding: 10px 14px; }
+  #desktopHint { display: none; }
+  @media (min-width: 900px) and (hover: hover) {
+    #desktopHint { display: block; position: fixed; left: 24px; top: 24px; width: 260px; background: var(--panel);
+      border-radius: 18px; padding: 18px; color: var(--dim); font-size: 14px; line-height: 1.45; }
+    #desktopHint h3 { color: var(--fg); margin: 0 0 8px; font-size: 17px; }
+    #desktopHint img { width: 100%; background: #fff; border-radius: 12px; padding: 10px; margin-top: 10px; }
+  }
+</style>
+</head>
+<body>
+<aside id="desktopHint">
+  <h3>Für das Handy gemacht</h3>
+  Diese App ist für Chrome auf dem Smartphone im Hochformat gedacht. QR-Code mit dem Handy scannen, Seite öffnen und „App installieren“ tippen.
+  <img src="qr.png" loading="lazy" alt="QR-Code zur App" onerror="this.remove()">
+</aside>
+<div id="app">
+  <div id="screens">
+
+    <!-- ===== BLUETOOTH ===== -->
+    <section class="screen" id="s-bt">
+      <h2>Bluetooth</h2>
+      <div class="card">
+        <div id="btStatusLine"><span id="btDot"></span><span id="btStatus">Nicht verbunden</span></div>
+        <div id="btDevice"></div>
+      </div>
+      <button id="btConnect" class="primary">Verbinden</button>
+      <div id="btScroll">
+        <div id="btSuccess" hidden>
+          <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#15803d"/><path d="M28 52 L44 67 L73 36" stroke="#fff" stroke-width="10" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div>Verbindung steht</div>
+        </div>
+        <div id="wizard" class="card" hidden style="margin-top:10px">
+          <div class="wz-count" id="wzCount"></div>
+          <div id="wzNote"></div>
+          <h3 id="wzTitle"></h3>
+          <p id="wzText"></p>
+          <div class="wz-q">Ist das Problem behoben?</div>
+          <div class="row"><button id="wzYes">Ja</button><button id="wzNo">Nein</button></div>
+        </div>
+        <div id="wzEnd" class="card" hidden style="margin-top:10px">
+          <h3 style="margin:0 0 8px">Alle Schritte durchlaufen</h3>
+          <p style="color:#d4d4d8;line-height:1.45;margin:0 0 12px">Leider kam keine Verbindung zustande. Prüfe, ob eine andere App (z. B. eine Fahrrad-App) gerade mit dem Puls-Signal der Uhr verbunden ist – die Uhr kann meist nur ein Gerät gleichzeitig beliefern.</p>
+          <button id="wzRestart" style="width:100%">Von vorn beginnen</button>
+        </div>
+        <div id="installCard" class="card" hidden style="margin-top:10px">
+          <h3 style="margin:0 0 6px">App installieren</h3>
+          <p id="installText" style="color:#d4d4d8;line-height:1.45;margin:0 0 12px">Mit einem Tipp landet die App als eigenes Symbol auf deinem Startbildschirm und startet ohne Browserleiste.</p>
+          <button id="installBtn" class="primary" style="width:100%">Jetzt installieren</button>
+        </div>
+        <details class="demo" id="demoBox">
+          <summary>Testmodus ohne Uhr (nur zum Testen)</summary>
+          <div class="card">
+            <button id="demoBtn" style="width:100%">Simulation starten</button>
+            <label><input type="checkbox" id="demoManual"> Puls manuell vorgeben: <b id="demoVal">130</b></label>
+            <input type="range" id="demoSlider" min="60" max="200" value="130">
+          </div>
+        </details>
+        <div id="appVersion">Version</div>
+      </div>
+    </section>
+
+    <!-- ===== MEASURE ===== -->
+    <section class="screen" id="s-measure">
+      <div id="rect">
+        <div id="circle">--</div>
+        <div class="rinfo" id="countdown"></div>
+        <div class="rinfo" id="targetRange"></div>
+        <div class="arrow" id="arrowDown"><svg viewBox="0 0 40 48"><path d="M13 0h14v26h13L20 48 0 26h13z"/></svg></div>
+        <div class="arrow" id="arrowUp"><svg viewBox="0 0 40 48"><path d="M13 48h14V22h13L20 0 0 22h13z"/></svg></div>
+        <div class="rinfo" id="trainTime"></div>
+      </div>
+      <div id="mctl">
+        <button id="btnStart" class="primary">Start</button>
+        <button id="btnStartIv" class="primary">Start mit Intervall</button>
+        <button id="btnStop">Stopp</button>
+        <button id="btnLock">Sperren<br><small style="font-weight:500;opacity:.7">lang drücken</small></button>
+      </div>
+    </section>
+
+    <!-- ===== ZONES ===== -->
+    <section class="screen" id="s-zones">
+      <h2>Zonen</h2>
+      <div class="zhead"><span></span><span>Zone</span><span>ab bpm</span><span>bis</span></div>
+      <div id="zList"></div>
+      <div id="zMsg"></div>
+      <p class="note"><i style="background:#3f3f46"></i>Unter Zone 1: dunkelgrau &nbsp; <i style="background:#161618;border:1px solid #333"></i>Kein Signal: fast schwarz</p>
+      <p class="note"><i style="background:#a855f7"></i>Lila gibt es nur in Intervallen: Abschnitt ohne Puls-Sollwert (z. B. Hochfahren, Ausrollen).</p>
+    </section>
+
+    <!-- ===== INTERVALS ===== -->
+    <section class="screen" id="s-iv">
+      <h2>Intervalle</h2>
+      <div id="ivSummary"><span id="ivCount"></span><span>Gesamt <b id="ivTotal"></b></span></div>
+      <div id="ivWrap">
+        <div class="ivgrid ivhead"><span class="handle"></span><span>#</span><span>Zeit</span><span>Zone</span><span>Kop.</span><span>Lösch.</span></div>
+        <div id="ivRows"></div>
+      </div>
+      <div id="ivctl">
+        <button id="ivRun" class="w2">Ausführen</button>
+        <button id="ivDnd" class="w2">Drag&amp;Drop</button>
+        <button id="ivLock" class="w2">Sichern</button>
+        <button id="ivSave" class="w3">In Liste sichern</button>
+        <button id="ivLoad" class="w3">Aus Liste holen</button>
+      </div>
+    </section>
+  </div>
+
+  <nav>
+    <button data-s="s-bt"><span class="badge" id="navBadge"></span>
+      <svg viewBox="0 0 24 24"><path d="M7 7l10 10-5 5V2l5 5L7 17"/></svg>Bluetooth</button>
+    <button data-s="s-measure">
+      <svg viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21.2l8.8-8.8a5.5 5.5 0 0 0 0-7.8z"/></svg>Measure</button>
+    <button data-s="s-zones">
+      <svg viewBox="0 0 24 24"><path d="M4 20v-4M9 20v-7M14 20v-10M19 20V4"/></svg>Zones</button>
+    <button data-s="s-iv">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg>Intervals</button>
+  </nav>
+
+  <div id="shield"></div>
+  <div id="toast"></div>
+  <div id="updateBar" hidden>
+    <span>Neue Version verfügbar</span>
+    <button id="updateBtn" class="primary">Aktualisieren</button>
+  </div>
+
+  <dialog id="dlgSave">
+    <h3>In Liste sichern</h3>
+    <input type="text" id="saveName" placeholder="Name, z. B. 6× 3/2 min" maxlength="40">
+    <div class="row"><button id="saveCancel">Abbrechen</button><button id="saveOk" class="primary">Speichern</button></div>
+  </dialog>
+
+  <dialog id="dlgLoad">
+    <h3>Aus Liste holen</h3>
+    <div id="libList"></div>
+    <button id="loadClose" style="width:100%">Schließen</button>
+  </dialog>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+
+  // ---------- Farben & Grunddaten ----------
+  const ZONE_COLORS = ["#8fa3bf", "#3b82f6", "#22c55e", "#f59e0b", "#ef4444"];
+  const FREE = "#a855f7", BELOW = "#3f3f46", NOSIG = "#161618";
+  const COLORS6 = [...ZONE_COLORS, FREE];
+  const LABELS6 = ["Z1", "Z2", "Z3", "Z4", "Z5", "frei"];
+  const ZNAMES = ["Aufwärmen", "Fettverbrennung", "Aerob", "Anaerob", "Maximum"];
+  const STALE_MS = 5000;
+
+  const load = (k, d) => { try { const v = localStorage.getItem("piv_" + k); return v === null ? d : JSON.parse(v); } catch { return d; } };
+  const save = (k, v) => { try { localStorage.setItem("piv_" + k, JSON.stringify(v)); } catch {} };
+
+  const DEFAULT_ROWS = [
+    { m: 5, s: 0, c: 5 }, { m: 3, s: 0, c: 3 }, { m: 2, s: 0, c: 1 },
+    { m: 3, s: 0, c: 3 }, { m: 2, s: 0, c: 1 }, { m: 5, s: 0, c: 5 },
+  ];
+  const st = {
+    zones: load("zones", [95, 114, 133, 152, 171]),
+    rows: load("rows", DEFAULT_ROWS).map(r => ({ m: r.m, s: r.s, c: r.c, copy: false, del: false })),
+    locked: load("locked", false),
+    lib: load("lib", {}),
+    lastName: load("lastName", ""),
+  };
+
+  const pad = n => String(n).padStart(2, "0");
+  const fmt = ms => {
+    const s = Math.max(0, Math.ceil(ms / 1000));
+    const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = s % 60;
+    return h ? `${h}:${pad(m)}:${pad(x)}` : `${m}:${pad(x)}`;
+  };
+  const fmtUp = ms => fmt(Math.floor(ms / 1000) * 1000);
+
+  function toast(text, err = false, ms = 3500) {
+    const t = $("toast"); t.textContent = text; t.className = err ? "err" : ""; t.style.display = "block";
+    clearTimeout(toast.h); toast.h = setTimeout(() => t.style.display = "none", ms);
+  }
+
+  // Langer Druck (Zeiger-Ereignisse; funktioniert mit Finger und Maus)
+  function longPress(el, ms, { onLong, onShort, onStart, onEnd }) {
+    let timer = null;
+    el.addEventListener("pointerdown", e => {
+      if (el.disabled || (e.button !== undefined && e.button > 0)) return;
+      onStart && onStart();
+      timer = setTimeout(() => { timer = null; onEnd && onEnd(); onLong && onLong(); }, ms);
+    });
+    const cancel = up => {
+      if (!timer) return;
+      clearTimeout(timer); timer = null; onEnd && onEnd();
+      if (up && onShort) onShort();
+    };
+    el.addEventListener("pointerup", () => cancel(true));
+    el.addEventListener("pointerleave", () => cancel(false));
+    el.addEventListener("pointercancel", () => cancel(false));
+    el.addEventListener("contextmenu", e => e.preventDefault());
+  }
+
+  // ---------- Navigation ----------
+  let screen = "s-measure";
+  function show(id) {
+    if ($("app").classList.contains("locked")) return;
+    clearPending();
+    screen = id;
+    document.querySelectorAll(".screen").forEach(s => s.classList.toggle("active", s.id === id));
+    document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b.dataset.s === id));
+    if (id === "s-measure") requestAnimationFrame(sizeCircle);
+  }
+  document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => show(b.dataset.s)));
+
+  // ---------- Puls-Quelle ----------
+  let hr = null, hrAt = 0;
+  function onHeartRate(bpm) {
+    if (!bpm || bpm < 25 || bpm > 250) return;
+    hr = bpm; hrAt = Date.now();
+    renderMeasure();
+  }
+  const signalOk = () => hr !== null && Date.now() - hrAt < STALE_MS;
+  function zoneOf(b) { let z = -1; st.zones.forEach((m, i) => { if (b >= m) z = i; }); return z; }
+
+  // ---------- Bluetooth ----------
+  let device = null, wantConnected = false, retryTimer = null, retryDelay = 1000, btState = "off";
+
+  function setBt(state, text) {
+    btState = state;
+    $("btStatus").textContent = text;
+    $("btDot").className = state === "ok" ? "ok" : state === "wait" ? "wait" : "";
+    $("navBadge").className = "badge" + (state === "ok" ? " ok" : "");
+    $("btConnect").textContent = (state === "ok" || state === "wait") && wantConnected ? "Trennen" : "Verbinden";
+    $("btConnect").classList.toggle("primary", !(wantConnected));
+  }
+
+  const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
+
+  async function gattConnect() {
+    const server = await device.gatt.connect();
+    const svc = await server.getPrimaryService("heart_rate");
+    const ch = await svc.getCharacteristic("heart_rate_measurement");
+    ch.addEventListener("characteristicvaluechanged", e => {
+      const dv = e.target.value, flags = dv.getUint8(0);
+      onHeartRate((flags & 1) ? dv.getUint16(1, true) : dv.getUint8(1));
+    });
+    await ch.startNotifications();
+  }
+
+  function onGattDisconnected() {
+    if (!wantConnected) return;
+    setBt("wait", "Verbindung verloren – verbinde neu …");
+    scheduleReconnect();
+  }
+  function scheduleReconnect() {
+    clearTimeout(retryTimer);
+    retryTimer = setTimeout(async () => {
+      if (!wantConnected) return;
+      try { await withTimeout(gattConnect(), 12000); retryDelay = 1000; setBt("ok", "Verbunden"); }
+      catch { retryDelay = Math.min(retryDelay * 2, 15000); scheduleReconnect(); }
+    }, retryDelay);
+  }
+
+  // Muss direkt aus einem Tipp heraus aufgerufen werden (Vorgabe von Chrome)
+  async function attemptConnect() {
+    if (!("bluetooth" in navigator)) {
+      toast("Dieser Browser kann kein Web Bluetooth. Bitte Chrome verwenden.", true, 6000);
+      return false;
+    }
+    let dev;
+    try { dev = await navigator.bluetooth.requestDevice({ filters: [{ services: ["heart_rate"] }] }); }
+    catch { return false; }
+    stopDemo();
+    if (device !== dev) { device = dev; device.addEventListener("gattserverdisconnected", onGattDisconnected); }
+    wantConnected = true;
+    setBt("wait", "Verbinde …");
+    $("btDevice").textContent = device.name || "";
+    try {
+      await withTimeout(gattConnect(), 12000);
+      retryDelay = 1000;
+      setBt("ok", "Verbunden");
+      requestWakeLock();
+      return true;
+    } catch {
+      wantConnected = false;
+      try { device.gatt.disconnect(); } catch {}
+      setBt("off", "Nicht verbunden");
+      return false;
+    }
+  }
+
+  function disconnectBt() {
+    wantConnected = false; clearTimeout(retryTimer);
+    try { device && device.gatt.connected && device.gatt.disconnect(); } catch {}
+    setBt("off", "Nicht verbunden");
+    $("btSuccess").hidden = true;
+    renderMeasure();
+  }
+
+  // Hilfe-Assistent (Entwurf der Schritte)
+  const STEPS = [
+    ["Uhr wecken", "Tippe auf das Display der Uhr, damit sie aktiv ist, und halte sie nah ans Handy (unter 1 m)."],
+    ["Herzfrequenz-Push öffnen", "Drücke an der Uhr den Knopf rechts oben. Wische in der App-Liste, bis „Herzfrequenz-Push“ erscheint, und tippe darauf."],
+    ["Senden einschalten", "Starte in Herzfrequenz-Push die Übertragung per Bluetooth. Die Uhr zeigt dann deinen Puls an. Lass diese Anzeige auf der Uhr geöffnet."],
+    ["Bluetooth am Handy", "Wische vom oberen Bildschirmrand nach unten und prüfe, dass Bluetooth eingeschaltet ist."],
+    ["Standort am Handy", "Prüfe in denselben Schnelleinstellungen, dass „Standort“ eingeschaltet ist. Android braucht das für die Suche nach Bluetooth-Geräten."],
+    ["Berechtigung für Chrome", "Öffne Einstellungen → Apps → Chrome → Berechtigungen. Stelle „Geräte in der Nähe“ und „Standort“ auf „Zulassen“."],
+    ["Richtiges Gerät wählen", "Nach dem Tipp auf „Ja“ öffnet Chrome eine Geräteliste. Warte bis zu 10 Sekunden, bis die Uhr erscheint (Name beginnt meist mit „Amazfit“), und tippe sie an."],
+    ["Herzfrequenz-Push neu starten", "Beende Herzfrequenz-Push auf der Uhr und starte es wie in Schritt 2 und 3 neu."],
+    ["Bluetooth neu starten", "Schalte Bluetooth am Handy aus, warte 5 Sekunden und schalte es wieder ein."],
+    ["Chrome neu starten", "Wische diese App und Chrome in der Übersicht der zuletzt genutzten Apps weg und öffne die App neu."],
+    ["Uhr neu starten", "Halte den Knopf rechts oben an der Uhr lange gedrückt und wähle „Neu starten“. Danach Schritt 2 und 3 wiederholen."],
+  ];
+  let wzStep = -1;
+  function showWizard(step, note) {
+    wzStep = step;
+    $("btSuccess").hidden = true;
+    if (step >= STEPS.length) { $("wizard").hidden = true; $("wzEnd").hidden = false; return; }
+    $("wzEnd").hidden = true; $("wizard").hidden = false;
+    $("wzCount").textContent = `Schritt ${step + 1} von ${STEPS.length}`;
+    $("wzNote").textContent = note || "";
+    $("wzTitle").textContent = STEPS[step][0];
+    $("wzText").textContent = STEPS[step][1];
+    $("btScroll").scrollTop = 0;
+  }
+  function showSuccess() {
+    wzStep = -1;
+    $("wizard").hidden = true; $("wzEnd").hidden = true; $("btSuccess").hidden = false;
+  }
+  function setWizardBusy(b) { $("wzYes").disabled = b; $("wzNo").disabled = b; $("btConnect").disabled = b; }
+
+  $("btConnect").onclick = async () => {
+    if (wantConnected) { disconnectBt(); return; }
+    setWizardBusy(true);
+    const ok = await attemptConnect();
+    setWizardBusy(false);
+    if (ok) showSuccess();
+    else showWizard(wzStep < 0 ? 0 : wzStep, "Keine Verbindung. Probiere diesen Schritt:");
+  };
+  $("wzYes").onclick = async () => {
+    setWizardBusy(true);
+    const ok = await attemptConnect();
+    setWizardBusy(false);
+    if (ok) showSuccess();
+    else showWizard(wzStep + 1, "Noch keine Verbindung. Nächster Schritt:");
+  };
+  $("wzNo").onclick = () => showWizard(wzStep + 1, "");
+  $("wzRestart").onclick = () => showWizard(0, "");
+
+  // Simulation
+  let demoTimer = null, demoT = 0;
+  function startDemo() {
+    if (wantConnected) disconnectBt();
+    $("demoBtn").textContent = "Simulation stoppen";
+    $("demoBtn").classList.add("green");
+    setBt("ok", "Simulation läuft");
+    $("btDevice").textContent = "Testmodus – keine echte Uhr";
+    demoTimer = setInterval(() => {
+      demoT++;
+      const v = $("demoManual").checked ? +$("demoSlider").value
+        : Math.round(118 + 55 * Math.sin(demoT / 18) + (Math.random() * 6 - 3));
+      onHeartRate(v);
+    }, 1000);
+  }
+  function stopDemo() {
+    if (!demoTimer) return;
+    clearInterval(demoTimer); demoTimer = null;
+    $("demoBtn").textContent = "Simulation starten";
+    $("demoBtn").classList.remove("green");
+    if (!wantConnected) { setBt("off", "Nicht verbunden"); $("btDevice").textContent = ""; }
+  }
+  $("demoBtn").onclick = () => demoTimer ? stopDemo() : startDemo();
+  $("demoSlider").oninput = () => { $("demoVal").textContent = $("demoSlider").value; if (demoTimer && $("demoManual").checked) onHeartRate(+$("demoSlider").value); };
+
+  // ---------- Bildschirm anlassen ----------
+  let wakeLock = null;
+  async function requestWakeLock() {
+    try { if ("wakeLock" in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release", () => wakeLock = null); } } catch {}
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && (wantConnected || train.running)) requestWakeLock();
+  });
+
+  // ---------- Measure ----------
+  const train = { running: false, startAt: 0, endAt: 0, interval: false, segs: [] };
+
+  function sizeCircle() {
+    const r = $("rect").getBoundingClientRect();
+    if (!r.width) return;
+    const d = Math.floor(Math.min(r.width, r.height - 40) * 0.94);
+    const c = $("circle");
+    c.style.width = c.style.height = d + "px";
+    c.style.fontSize = Math.floor(d * 0.42) + "px";
+    c.style.top = `calc(50% - 14px)`;
+  }
+  new ResizeObserver(sizeCircle).observe($("rect"));
+
+  function currentTarget(now) {
+    if (!train.running || !train.interval) return { target: null, remain: null };
+    const el = now - train.startAt; let acc = 0;
+    for (const seg of train.segs) { acc += seg.dur; if (el < acc) return { target: seg.c, remain: acc - el }; }
+    return { target: null, remain: null };
+  }
+
+  function renderMeasure() {
+    const now = Date.now();
+    const ok = signalOk();
+    const z = ok ? zoneOf(hr) : null;
+    const cur = !ok ? NOSIG : z < 0 ? BELOW : ZONE_COLORS[z];
+    const { target, remain } = currentTarget(now);
+    const rectColor = target !== null ? COLORS6[target] : cur;
+    const c = $("circle"), r = $("rect");
+    c.textContent = ok ? hr : "--";
+    c.style.setProperty("--c", cur);
+    const blink = target !== null && target < 5 && ok && z !== target;
+    $("arrowDown").classList.toggle("on", blink && z > target);  // Puls zu hoch → runter
+    $("arrowUp").classList.toggle("on", blink && z < target);    // Puls zu niedrig → hoch
+    if (c.classList.contains("blink") !== blink) c.classList.toggle("blink", blink);
+    r.style.background = rectColor;
+    r.classList.toggle("dark", rectColor === NOSIG || rectColor === BELOW);
+    const cd = remain !== null ? `<div class="lbl">Intervall</div>${fmt(remain)}` : "";
+    if ($("countdown").innerHTML !== cd) $("countdown").innerHTML = cd;
+    const tr = target === null || target > 4 ? ""
+      : `<div class="lbl">SOLL</div>` + (target < 4 ? `${st.zones[target]} – ${st.zones[target + 1] - 1}` : `ab ${st.zones[4]}`);
+    if ($("targetRange").innerHTML !== tr) $("targetRange").innerHTML = tr;
+    const tt = train.startAt ? `<div class="lbl">Training</div>${fmtUp((train.running ? now : train.endAt) - train.startAt)}` : "";
+    if ($("trainTime").innerHTML !== tt) $("trainTime").innerHTML = tt;
+  }
+  setInterval(renderMeasure, 250);
+
+  function updateMeasureButtons() {
+    $("btnStart").disabled = train.running;
+    $("btnStartIv").disabled = train.running || !st.locked;
+    $("btnStop").disabled = !train.running;
+    $("ivLock").disabled = train.running && train.interval;
+  }
+  $("btnStart").onclick = () => {
+    if (train.running) return;
+    Object.assign(train, { running: true, startAt: Date.now(), endAt: 0, interval: false, segs: [] });
+    requestWakeLock(); updateMeasureButtons(); renderMeasure();
+  };
+  $("btnStartIv").onclick = () => {
+    if (train.running || !st.locked) return;
+    const segs = st.rows.map(r => ({ dur: (r.m * 60 + r.s) * 1000, c: r.c }));
+    Object.assign(train, { running: true, startAt: Date.now(), endAt: 0, interval: true, segs });
+    requestWakeLock(); updateMeasureButtons(); renderMeasure();
+  };
+  $("btnStop").onclick = () => {
+    if (!train.running) return;
+    Object.assign(train, { running: false, endAt: Date.now(), interval: false });
+    updateMeasureButtons(); renderMeasure();
+  };
+  longPress($("btnLock"), 2000, {
+    onStart: () => $("btnLock").classList.add("charging"),
+    onEnd: () => $("btnLock").classList.remove("charging"),
+    onLong: () => {
+      const app = $("app"), lock = !app.classList.contains("locked");
+      app.classList.toggle("locked", lock);
+      $("btnLock").innerHTML = lock ? 'Entsperren<br><small style="font-weight:500;opacity:.7">lang drücken</small>'
+                                    : 'Sperren<br><small style="font-weight:500;opacity:.7">lang drücken</small>';
+      if (navigator.vibrate) try { navigator.vibrate(40); } catch {}
+    },
+    onShort: () => toast("Zum " + ($("app").classList.contains("locked") ? "Entsperren" : "Sperren") + " 2 Sekunden gedrückt halten."),
+  });
+
+  // ---------- Zones ----------
+  function renderZones() {
+    $("zList").innerHTML = st.zones.map((v, i) => `
+      <div class="zrow">
+        <div class="zsw" style="background:${ZONE_COLORS[i]}"></div>
+        <div class="zname">Zone ${i + 1}<small>${ZNAMES[i]}</small></div>
+        <input type="text" inputmode="numeric" maxlength="3" data-z="${i}" value="${v}">
+        <div class="zup" id="zup${i}"></div>
+      </div>`).join("");
+    updateUppers();
+  }
+  function updateUppers() {
+    st.zones.forEach((v, i) => { $("zup" + i).textContent = i < 4 ? `bis ${st.zones[i + 1] - 1}` : "und höher"; });
+  }
+  $("zList").addEventListener("input", e => {
+    const inputs = [...$("zList").querySelectorAll("input")];
+    const vals = inputs.map(x => parseInt(x.value, 10));
+    let bad = -1;
+    vals.forEach((v, i) => {
+      const wrong = !(v >= 30 && v <= 240) || (i > 0 && !(v > vals[i - 1]));
+      inputs[i].classList.toggle("bad", wrong);
+      if (wrong && bad < 0) bad = i;
+    });
+    if (bad >= 0) { $("zMsg").textContent = "Werte müssen von Zone 1 bis 5 ansteigen (30–240 bpm). Noch nicht gespeichert."; return; }
+    $("zMsg").textContent = "";
+    st.zones = vals; save("zones", vals); updateUppers(); renderMeasure();
+  });
+
+  // ---------- Intervals ----------
+  let dnd = false, pending = null;  // pending = { i, c } – Farbe angetippt, noch nicht bestätigt
+
+  function totalMs(rows) { return rows.reduce((a, r) => a + (r.m * 60 + r.s) * 1000, 0); }
+
+  function renderIv() {
+    const wrap = $("ivWrap");
+    wrap.classList.toggle("dnd", dnd && !st.locked);
+    wrap.classList.toggle("locked", st.locked);
+    $("ivRows").innerHTML = st.rows.map((r, i) => `
+      <div class="ivgrid ivrow" data-i="${i}">
+        <span class="handle">≡</span>
+        <span class="nr">${i + 1}</span>
+        <span class="time"><input class="mm" type="text" inputmode="numeric" maxlength="2" value="${r.m}" ${st.locked ? "disabled" : ""}>:<input class="ss" type="text" inputmode="numeric" maxlength="2" value="${pad(r.s)}" ${st.locked ? "disabled" : ""}></span>
+        <button class="cc" style="background:${COLORS6[r.c]}">${LABELS6[r.c]}</button>
+        <label class="ck"><input type="checkbox" class="cp" ${r.copy ? "checked" : ""} ${st.locked ? "disabled" : ""}></label>
+        <label class="ck del"><input type="checkbox" class="dl" ${r.del ? "checked" : ""} ${st.locked ? "disabled" : ""}></label>
+      </div>`).join("");
+    $("ivRows").querySelectorAll(".cc").forEach(bindColorCell);
+    updateIvSummary();
+    $("ivRun").disabled = st.locked;
+    $("ivDnd").disabled = st.locked;
+    $("ivLoad").disabled = st.locked;
+    $("ivDnd").classList.toggle("green", dnd && !st.locked);
+    $("ivLock").textContent = st.locked ? "Gesichert ✓" : "Sichern";
+    $("ivLock").classList.toggle("green", st.locked);
+    updateMeasureButtons();
+  }
+  function updateIvSummary() {
+    $("ivCount").textContent = `${st.rows.length} Abschnitt${st.rows.length === 1 ? "" : "e"}`;
+    $("ivTotal").textContent = fmt(totalMs(st.rows));
+  }
+  const persistRows = () => save("rows", st.rows.map(r => ({ m: r.m, s: r.s, c: r.c })));
+
+  // Farbe: Tippen schaltet weiter, langer Druck übernimmt
+  function bindColorCell(btn) {
+    const i = +btn.closest(".ivrow").dataset.i;
+    longPress(btn, 600, {
+      onStart: () => btn.classList.add("pressing"),
+      onEnd: () => btn.classList.remove("pressing"),
+      onShort: () => {
+        if (st.locked) return;
+        if (!pending || pending.i !== i) { clearPending(); pending = { i, c: st.rows[i].c }; }
+        pending.c = (pending.c + 1) % 6;
+        paintCell(btn, pending.c, true);
+      },
+      onLong: () => {
+        if (st.locked) return;
+        if (pending && pending.i === i) {
+          st.rows[i].c = pending.c; pending = null; persistRows();
+          paintCell(btn, st.rows[i].c, false);
+          if (navigator.vibrate) try { navigator.vibrate(30); } catch {}
+        } else toast("Erst antippen, bis die gewünschte Farbe erscheint, dann lang drücken.");
+      },
+    });
+  }
+  function paintCell(btn, c, isPending) {
+    btn.style.background = COLORS6[c]; btn.textContent = LABELS6[c];
+    btn.classList.toggle("pending", isPending);
+  }
+  function clearPending() {
+    if (!pending) return;
+    const row = $("ivRows").querySelector(`.ivrow[data-i="${pending.i}"] .cc`);
+    const i = pending.i; pending = null;
+    if (row && st.rows[i]) paintCell(row, st.rows[i].c, false);
+  }
+
+  // Zeit-Eingaben
+  $("ivRows").addEventListener("focusin", e => { if (e.target.matches(".mm,.ss")) clearPending(); });
+  $("ivRows").addEventListener("input", e => {
+    const t = e.target; if (!t.matches(".mm,.ss")) return;
+    t.value = t.value.replace(/\D/g, "");
+    const i = +t.closest(".ivrow").dataset.i, v = parseInt(t.value || "0", 10);
+    if (t.classList.contains("mm")) st.rows[i].m = Math.min(v, 99);
+    else st.rows[i].s = Math.min(v, 59);
+    t.classList.remove("bad");
+    persistRows(); updateIvSummary();
+  });
+  $("ivRows").addEventListener("focusout", e => {
+    const t = e.target; if (!t.matches(".mm,.ss")) return;
+    const i = +t.closest(".ivrow").dataset.i;
+    t.value = t.classList.contains("mm") ? st.rows[i].m : pad(st.rows[i].s);
+  });
+  // Checkboxen: pro Zeile nur ein Haken
+  $("ivRows").addEventListener("change", e => {
+    const t = e.target; if (!t.matches(".cp,.dl")) return;
+    clearPending();
+    const rowEl = t.closest(".ivrow"), i = +rowEl.dataset.i, r = st.rows[i];
+    if (t.classList.contains("cp")) { r.copy = t.checked; if (t.checked) { r.del = false; rowEl.querySelector(".dl").checked = false; } }
+    else { r.del = t.checked; if (t.checked) { r.copy = false; rowEl.querySelector(".cp").checked = false; } }
+  });
+
+  $("ivRun").onclick = () => {
+    clearPending();
+    const marked = st.rows.some(r => r.copy || r.del);
+    if (!marked) { toast("Keine Zeile zum Kopieren oder Löschen markiert."); return; }
+    const copies = st.rows.filter(r => r.copy).map(r => ({ m: r.m, s: r.s, c: r.c, copy: false, del: false }));
+    let res = st.rows.filter(r => !r.del).map(r => ({ ...r, copy: false }));
+    res = res.concat(copies);
+    if (!res.length) { res = [{ ...st.rows[0], copy: false, del: false }]; toast("Mindestens eine Zeile bleibt immer stehen."); }
+    st.rows = res; persistRows(); renderIv();
+    $("ivWrap").scrollTop = copies.length ? $("ivWrap").scrollHeight : $("ivWrap").scrollTop;
+  };
+
+  $("ivDnd").onclick = () => { clearPending(); dnd = !dnd; renderIv(); };
+
+  // Drag & Drop über die Griffe
+  let drag = null;
+  $("ivRows").addEventListener("pointerdown", e => {
+    const h = e.target.closest(".handle"); if (!h || !dnd || st.locked) return;
+    e.preventDefault(); clearPending();
+    const row = h.closest(".ivrow");
+    drag = { row, id: e.pointerId };
+    row.classList.add("dragging");
+    h.setPointerCapture(e.pointerId);
+  });
+  $("ivRows").addEventListener("pointermove", e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const y = e.clientY, row = drag.row;
+    const prev = row.previousElementSibling, next = row.nextElementSibling;
+    if (prev) { const b = prev.getBoundingClientRect(); if (y < b.top + b.height / 2) row.parentNode.insertBefore(row, prev); }
+    if (next) { const b = next.getBoundingClientRect(); if (y > b.top + b.height / 2) row.parentNode.insertBefore(next, row); }
+    const w = $("ivWrap").getBoundingClientRect();
+    if (y < w.top + 40) $("ivWrap").scrollTop -= 8;
+    if (y > w.bottom - 40) $("ivWrap").scrollTop += 8;
+  });
+  const endDrag = e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const order = [...$("ivRows").children].map(el => +el.dataset.i);
+    st.rows = order.map(i => st.rows[i]);
+    drag = null; persistRows(); renderIv();
+  };
+  $("ivRows").addEventListener("pointerup", endDrag);
+  $("ivRows").addEventListener("pointercancel", endDrag);
+
+  // Sichern / Entsperren
+  $("ivLock").onclick = () => {
+    clearPending();
+    if (st.locked) {
+      if (train.running && train.interval) return;
+      st.locked = false; save("locked", false); renderIv();
+      toast("Entsperrt. „Start mit Intervall“ ist bis zum nächsten Sichern gesperrt.");
+      return;
+    }
+    const badRows = [];
+    $("ivRows").querySelectorAll(".ivrow").forEach(el => {
+      const r = st.rows[+el.dataset.i];
+      const bad = r.m * 60 + r.s < 1;
+      el.querySelectorAll(".mm,.ss").forEach(x => x.classList.toggle("bad", bad));
+      if (bad) badRows.push(+el.dataset.i + 1);
+    });
+    if (badRows.length) { toast(`Zeile ${badRows.join(", ")}: Zeit fehlt.`, true); return; }
+    st.rows.forEach(r => { r.copy = false; r.del = false; });
+    dnd = false; st.locked = true; save("locked", true); renderIv();
+    toast("Gesichert. „Start mit Intervall“ ist freigegeben.");
+  };
+
+  // Liste
+  const cleanRows = rows => rows.map(r => ({ m: r.m, s: r.s, c: r.c }));
+  $("ivSave").onclick = () => {
+    clearPending();
+    $("saveName").value = st.lastName || "";
+    updateSaveBtn();
+    $("dlgSave").showModal();
+    setTimeout(() => $("saveName").focus(), 50);
+  };
+  function updateSaveBtn() {
+    const n = $("saveName").value.trim();
+    $("saveOk").textContent = st.lib[n] ? "Überschreiben" : "Speichern";
+    $("saveOk").disabled = !n;
+  }
+  $("saveName").oninput = updateSaveBtn;
+  $("saveCancel").onclick = () => $("dlgSave").close();
+  $("saveOk").onclick = () => {
+    const n = $("saveName").value.trim(); if (!n) return;
+    st.lib[n] = cleanRows(st.rows); st.lastName = n;
+    save("lib", st.lib); save("lastName", n);
+    $("dlgSave").close(); toast(`„${n}“ gesichert.`);
+  };
+
+  $("ivLoad").onclick = () => { clearPending(); renderLib(); $("dlgLoad").showModal(); };
+  $("loadClose").onclick = () => $("dlgLoad").close();
+  function renderLib() {
+    const names = Object.keys(st.lib).sort((a, b) => a.localeCompare(b, "de"));
+    const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    $("libList").innerHTML = names.length ? names.map(n => `
+      <div class="lib-item" data-n="${esc(n)}">
+        <div>${esc(n)}<small>${st.lib[n].length} Abschnitte · ${fmt(totalMs(st.lib[n]))}</small></div>
+        <button class="primary" data-a="load">Laden</button>
+        <button data-a="del">Löschen</button>
+      </div>`).join("") : '<p class="note">Noch keine Intervalle gesichert.</p>';
+  }
+  $("libList").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    const n = b.closest(".lib-item").dataset.n;
+    if (b.dataset.a === "load") {
+      st.rows = st.lib[n].map(r => ({ ...r, copy: false, del: false }));
+      st.lastName = n; save("lastName", n); persistRows(); renderIv();
+      $("dlgLoad").close(); toast(`„${n}“ geladen.`);
+    } else if (b.dataset.a === "del") {
+      if (b.dataset.sure) { delete st.lib[n]; save("lib", st.lib); renderLib(); }
+      else { b.dataset.sure = "1"; b.textContent = "Sicher?"; b.style.background = "#b91c1c"; }
+    }
+  });
+
+  // ---------- Version ----------
+  const APP_VERSION = "__APP_VERSION__";
+  $("appVersion").textContent = APP_VERSION.startsWith("__") ? "Entwicklungsversion" : "Version " + APP_VERSION;
+
+  // ---------- Installation ----------
+  const isStandalone = () => matchMedia("(display-mode: standalone)").matches
+    || matchMedia("(display-mode: fullscreen)").matches || navigator.standalone === true;
+  let installEvt = null;
+  window.addEventListener("beforeinstallprompt", e => {
+    e.preventDefault(); installEvt = e;
+    if (!isStandalone()) { $("installCard").hidden = false; $("installBtn").hidden = false; }
+  });
+  window.addEventListener("appinstalled", () => { installEvt = null; $("installCard").hidden = true; toast("App installiert – du findest sie jetzt auf dem Startbildschirm."); });
+  $("installBtn").onclick = async () => {
+    if (!installEvt) return;
+    installEvt.prompt();
+    try { await installEvt.userChoice; } catch {}
+    installEvt = null; $("installCard").hidden = true;
+  };
+  // Kein Installations-Angebot von Chrome (z. B. schon einmal abgelehnt): Hinweis auf das Menü
+  setTimeout(() => {
+    if (!isStandalone() && !installEvt && /Android/i.test(navigator.userAgent) && location.protocol === "https:") {
+      $("installText").textContent = "Tippe in Chrome oben rechts auf ⋮ und dann auf „App installieren“ (oder „Zum Startbildschirm hinzufügen“).";
+      $("installBtn").hidden = true;
+      $("installCard").hidden = false;
+    }
+  }, 4000);
+
+  // ---------- Updates (Service Worker) ----------
+  // Eine neue Version wird erst übernommen, wenn du auf „Aktualisieren“ tippst –
+  // nie automatisch mitten im Training.
+  let waitingWorker = null, reloading = false;
+  function offerUpdate(w) {
+    waitingWorker = w;
+    if (!train.running) $("updateBar").hidden = false;
+  }
+  $("updateBtn").onclick = () => { if (waitingWorker) waitingWorker.postMessage({ type: "SKIP_WAITING" }); };
+  // Nach Stopp ein zurückgehaltenes Update anbieten
+  $("btnStop").addEventListener("click", () => { if (waitingWorker) $("updateBar").hidden = false; });
+
+  if ("serviceWorker" in navigator && location.protocol !== "file:") {
+    navigator.serviceWorker.addEventListener("controllerchange", () => { if (!reloading) { reloading = true; location.reload(); } });
+    navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(reg => {
+      if (reg.waiting && navigator.serviceWorker.controller) offerUpdate(reg.waiting);
+      reg.addEventListener("updatefound", () => {
+        const w = reg.installing;
+        w && w.addEventListener("statechange", () => {
+          if (w.state === "installed" && navigator.serviceWorker.controller) offerUpdate(w);
+        });
+      });
+      const check = () => { if (!train.running) reg.update().catch(() => {}); };
+      document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") check(); });
+      setInterval(check, 30 * 60 * 1000);
+    }).catch(() => {});
+  }
+
+  // ---------- Start ----------
+  renderZones();
+  renderIv();
+  setBt("off", "Nicht verbunden");
+  show("s-bt");
+  renderMeasure();
+})();
+</script>
+</body>
+</html>
