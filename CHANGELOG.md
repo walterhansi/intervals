@@ -6,6 +6,12 @@ Format: neueste Version oben. Die Versionsnummer steht in der Datei `VERSION`.
 - **x.Y.0** (Minor): neue Funktionen
 - **X.0.0** (Major): grundlegende Umbauten
 
+## 1.3.0 – 2026-10-11
+
+- **QR-Übertragung direkt auf Intervals und Zones:** Knöpfe „QR fürs Handy“ (grün) und „QR einlesen“ statt versteckt unter „Aus Liste holen“.
+- **Übertragen werden jetzt Zonen, aktuelle Intervall-Tabelle (samt „Gesichert“-Zustand) und gesicherte Liste.** Jeweils gewinnt die neuere Fassung; auf dem Handy wird nichts gelöscht. Läuft am Handy gerade ein Intervall-Training, bleibt dessen Tabelle unangetastet.
+- Installations-Hinweis mit QR-Code am PC entfernt.
+
 ## 1.2.0 – 2026-10-11
 
 - **Übertragung PC → Handy per QR-Code:** Unter „Aus Liste holen“ gibt es „Senden (QR)“ und „Empfangen (QR)“. Das sendende Gerät zeigt die gesicherte Intervall-Liste als QR-Code (bei viel Inhalt mehrere Codes im Wechsel), das empfangende scannt ihn mit der Kamera. Kein Internet und kein Konto nötig.

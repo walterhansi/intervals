@@ -172,6 +172,9 @@
   #ivctl button { padding: 12px 4px; font-size: 14px; }
   #ivctl .w2 { grid-column: span 2; }
   #ivctl .w3 { grid-column: span 3; }
+  .qrrow { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 14px 0 6px; }
+  .qrSend, .qrRecv { min-height: 48px; }
+  .qrSend { background: #15803d; }
 
   /* ---------- Dialoge & Meldungen ---------- */
   dialog { background: #17171a; color: var(--fg); border: 1px solid var(--line); border-radius: 18px; padding: 18px;
@@ -188,28 +191,16 @@
     color: var(--fg); padding: 12px 14px; border-radius: 12px; font-size: 15px; display: none; box-shadow: 0 8px 24px rgba(0,0,0,.6); }
   #toast.err { background: #450a0a; color: #fecaca; }
 
-  /* ---------- PWA: Version, Update, PC-Hinweis ---------- */
+  /* ---------- PWA: Version, Update ---------- */
   #appVersion { color: #55555c; font-size: 12px; text-align: center; padding: 18px 0 6px; }
   #updateBar { position: absolute; left: 10px; right: 10px; top: calc(10px + env(safe-area-inset-top)); z-index: 70;
     display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #0b2a4a; color: #fff;
     padding: 10px 10px 10px 14px; border-radius: 14px; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,.6); }
   #updateBar[hidden] { display: none; }
   #updateBar button { padding: 10px 14px; }
-  #desktopHint { display: none; }
-  @media (min-width: 900px) and (hover: hover) {
-    #desktopHint { display: block; position: fixed; left: 24px; top: 24px; width: 260px; background: var(--panel);
-      border-radius: 18px; padding: 18px; color: var(--dim); font-size: 14px; line-height: 1.45; }
-    #desktopHint h3 { color: var(--fg); margin: 0 0 8px; font-size: 17px; }
-    #desktopHint img { width: 100%; background: #fff; border-radius: 12px; padding: 10px; margin-top: 10px; }
-  }
 </style>
 </head>
 <body>
-<aside id="desktopHint">
-  <h3>Für das Handy gemacht</h3>
-  Diese App ist für Chrome auf dem Smartphone im Hochformat gedacht. QR-Code mit dem Handy scannen, Seite öffnen und „App installieren“ tippen.
-  <img src="qr.png" loading="lazy" alt="QR-Code zur App" onerror="this.remove()">
-</aside>
 <div id="app">
   <div id="screens">
 
@@ -285,6 +276,8 @@
       <div id="zMsg"></div>
       <p class="note"><i style="background:#3f3f46"></i>Unter Zone 1: dunkelgrau &nbsp; <i style="background:#161618;border:1px solid #333"></i>Kein Signal: fast schwarz</p>
       <p class="note"><i style="background:#a855f7"></i>Lila gibt es nur in Intervallen: Abschnitt ohne Puls-Sollwert (z. B. Hochfahren, Ausrollen).</p>
+      <div class="qrrow"><button class="qrSend">QR fürs Handy</button><button class="qrRecv">QR einlesen</button></div>
+      <p class="note">„QR fürs Handy“ überträgt Zonen, aktuelle Intervall-Tabelle und gesicherte Liste. Am Handy „QR einlesen“ tippen. Dort wird nichts gelöscht; jeweils die neuere Fassung gewinnt.</p>
     </section>
 
     <!-- ===== INTERVALS ===== -->
@@ -301,6 +294,8 @@
         <button id="ivLock" class="w2">Sichern</button>
         <button id="ivSave" class="w3">In Liste sichern</button>
         <button id="ivLoad" class="w3">Aus Liste holen</button>
+        <button class="w3 qrSend">QR fürs Handy</button>
+        <button class="w3 qrRecv">QR einlesen</button>
       </div>
     </section>
   </div>
@@ -338,7 +333,6 @@
   <dialog id="dlgLoad">
     <h3>Aus Liste holen</h3>
     <div id="libList"></div>
-    <div class="row" style="margin-bottom:10px"><button id="libSend">Senden (QR)</button><button id="libReceive">Empfangen (QR)</button></div>
     <button id="loadClose" style="width:100%">Schließen</button>
   </dialog>
 </div>
@@ -368,7 +362,9 @@
     rows: load("rows", DEFAULT_ROWS).map(r => ({ m: r.m, s: r.s, c: r.c, copy: false, del: false })),
     locked: load("locked", false),
     lib: load("lib", {}),
-    libTs: load("libTs", {}),   // Sicherungszeitpunkt je Programm (für die Übertragung: jüngere Fassung gewinnt)
+    libTs: load("libTs", {}),
+    rowsTs: load("rowsTs", 0),     // letzte Änderung der aktuellen Tabelle (für die Übertragung)
+    zonesTs: load("zonesTs", 0),   // letzte Änderung der Zonen   // Sicherungszeitpunkt je Programm (für die Übertragung: jüngere Fassung gewinnt)
     lastName: load("lastName", ""),
   };
 
@@ -855,7 +851,8 @@
     });
     if (bad >= 0) { $("zMsg").textContent = "Werte müssen von Zone 1 bis 5 ansteigen (30–240 bpm). Noch nicht gespeichert."; return; }
     $("zMsg").textContent = "";
-    st.zones = vals; save("zones", vals); updateUppers(); renderMeasure();
+    st.zones = vals; save("zones", vals); st.zonesTs = Date.now(); save("zonesTs", st.zonesTs);
+    updateUppers(); renderMeasure();
   });
 
   // ---------- Intervals ----------
@@ -890,7 +887,10 @@
     $("ivCount").textContent = `${st.rows.length} Abschnitt${st.rows.length === 1 ? "" : "e"}`;
     $("ivTotal").textContent = fmt(totalMs(st.rows));
   }
-  const persistRows = () => save("rows", st.rows.map(r => ({ m: r.m, s: r.s, c: r.c })));
+  const persistRows = () => {
+    save("rows", st.rows.map(r => ({ m: r.m, s: r.s, c: r.c })));
+    st.rowsTs = Date.now(); save("rowsTs", st.rowsTs);
+  };
 
   // Farbe: Tippen schaltet weiter, langer Druck übernimmt
   function bindColorCell(btn) {
@@ -998,7 +998,7 @@
     clearPending();
     if (st.locked) {
       if (train.running && train.interval) return;
-      st.locked = false; save("locked", false); renderIv();
+      st.locked = false; save("locked", false); st.rowsTs = Date.now(); save("rowsTs", st.rowsTs); renderIv();
       toast("Entsperrt. „Start mit Intervall“ ist bis zum nächsten Sichern gesperrt.");
       return;
     }
@@ -1011,7 +1011,7 @@
     });
     if (badRows.length) { toast(`Zeile ${badRows.join(", ")}: Zeit fehlt.`, true); return; }
     st.rows.forEach(r => { r.copy = false; r.del = false; });
-    dnd = false; st.locked = true; save("locked", true); renderIv();
+    dnd = false; st.locked = true; save("locked", true); st.rowsTs = Date.now(); save("rowsTs", st.rowsTs); renderIv();
     toast("Gesichert. „Start mit Intervall“ ist freigegeben.");
   };
 
@@ -1070,7 +1070,7 @@
   const validRow = r => Array.isArray(r) && [0, 1, 2].every(i => Number.isInteger(r[i]))
     && r[0] >= 0 && r[0] <= 99 && r[1] >= 0 && r[1] <= 59 && r[2] >= 0 && r[2] <= 9 && r[0] * 60 + r[1] >= 1;
   function importLib(data) {
-    if (!data || data.v !== 1 || !Array.isArray(data.l)) throw new Error("Unbekanntes Datenformat.");
+    if (!data || !Array.isArray(data.l)) throw new Error("Unbekanntes Datenformat.");
     const res = { added: [], updated: [], kept: [], unknown: [] };
     for (const item of data.l) {
       if (!Array.isArray(item)) continue;
@@ -1094,34 +1094,69 @@
     save("lib", st.lib); save("libTs", st.libTs);
     return res;
   }
-  $("libSend").onclick = () => {
+  function importAll(data) {
+    if (!data || (data.v !== 1 && data.v !== 2)) throw new Error("Unbekanntes Datenformat – bitte beide Geräte auf die neueste Version bringen.");
+    const out = [];
+    const line = (label, arr) => arr.length ? `${label} (${arr.length}): ${arr.join(", ")}` : "";
+    // Zonen
+    if (data.z && Array.isArray(data.z.v)) {
+      const v = data.z.v, t = Number(data.z.ts) || 0;
+      const ok = v.length === 5 && v.every((x, i) => Number.isInteger(x) && x >= 30 && x <= 240 && (i === 0 || x > v[i - 1]));
+      if (!ok) out.push("Zonen: ungültig, nicht übernommen");
+      else if (t > st.zonesTs) {
+        st.zones = v.slice(); st.zonesTs = t; save("zones", st.zones); save("zonesTs", t);
+        renderZones(); renderMeasure();
+        out.push("Zonen übernommen: " + v.join(" / "));
+      } else out.push(JSON.stringify(v) === JSON.stringify(st.zones) ? "Zonen: schon gleich" : "Zonen behalten (hier gleich alt oder neuer)");
+    }
+    // aktuelle Intervall-Tabelle
+    if (data.t && Array.isArray(data.t.r)) {
+      const t = Number(data.t.ts) || 0;
+      if (!data.t.r.length || !data.t.r.every(validRow)) out.push("Tabelle: ungültig, nicht übernommen");
+      else if (!(t > st.rowsTs)) out.push("Tabelle behalten (hier gleich alt oder neuer)");
+      else if (train.running && train.interval) out.push("Tabelle nicht übernommen – hier läuft gerade ein Intervall-Training. Nach dem Stopp erneut einlesen.");
+      else {
+        clearPending(); dnd = false;
+        st.rows = data.t.r.map(r => ({ m: r[0], s: r[1], c: r[2], copy: false, del: false }));
+        save("rows", st.rows.map(r => ({ m: r.m, s: r.s, c: r.c })));
+        st.rowsTs = t; save("rowsTs", t);
+        st.locked = !!data.t.k; save("locked", st.locked);
+        if (typeof data.t.n === "string") { st.lastName = data.t.n.slice(0, 40); save("lastName", st.lastName); }
+        renderIv();
+        out.push(`Tabelle übernommen: ${st.rows.length} Abschnitte · ${fmt(totalMs(st.rows))}` + (st.locked ? " (gesichert, startbereit)" : ""));
+      }
+    }
+    // gesicherte Liste
+    if (Array.isArray(data.l)) {
+      const r = importLib(data);
+      out.push(line("Liste neu", r.added), line("Liste aktualisiert", r.updated),
+        line("Liste behalten (hier gleich alt oder neuer)", r.kept),
+        line("Liste behalten, Alter unbekannt – am PC einmal neu „In Liste sichern“ und erneut senden", r.unknown));
+    }
+    return out.filter(Boolean).join("\n") || "Keine Daten im Code gefunden.";
+  }
+  function qrSend() {
     if (!window.AOSync) { toast("Übertragung nicht verfügbar – bitte App neu laden.", true); return; }
+    clearPending();
     const names = Object.keys(st.lib);
-    if (!names.length) { toast("Noch keine gesicherten Intervalle zum Senden."); return; }
-    $("dlgLoad").close();
     window.AOSync.send({
       app: "puls",
-      data: { v: 1, l: names.map(n => [n, st.libTs[n] || 0, st.lib[n].map(r => [r.m, r.s, r.c])]) },
-      summary: names.length === 1 ? "1 gesichertes Intervall-Programm" : `${names.length} gesicherte Intervall-Programme`
+      data: {
+        v: 2,
+        z: { v: st.zones, ts: st.zonesTs },
+        t: { r: st.rows.map(r => [r.m, r.s, r.c]), ts: st.rowsTs, k: st.locked, n: st.lastName || "" },
+        l: names.map(n => [n, st.libTs[n] || 0, st.lib[n].map(r => [r.m, r.s, r.c])])
+      },
+      summary: `Zonen, Tabelle (${st.rows.length} Abschnitte) und ${names.length} gesicherte${names.length === 1 ? "s Programm" : " Programme"}`
     });
-  };
-  $("libReceive").onclick = () => {
+  }
+  function qrRecv() {
     if (!window.AOSync) { toast("Übertragung nicht verfügbar – bitte App neu laden.", true); return; }
-    $("dlgLoad").close();
-    window.AOSync.receive({
-      app: "puls",
-      apply: data => {
-        const r = importLib(data);
-        const line = (label, arr) => arr.length ? `${label} (${arr.length}): ${arr.join(", ")}` : "";
-        return [
-          line("Neu", r.added),
-          line("Aktualisiert", r.updated),
-          line("Behalten, weil hier gleich alt oder neuer", r.kept),
-          line("Behalten, Alter unbekannt – am PC einmal neu sichern und erneut senden", r.unknown)
-        ].filter(Boolean).join("\n") || "Keine Intervall-Programme im Code gefunden.";
-      }
-    });
-  };
+    clearPending();
+    window.AOSync.receive({ app: "puls", apply: importAll });
+  }
+  document.querySelectorAll(".qrSend").forEach(b => b.onclick = qrSend);
+  document.querySelectorAll(".qrRecv").forEach(b => b.onclick = qrRecv);
 
   // ---------- Version ----------
   const APP_VERSION = "__APP_VERSION__";
