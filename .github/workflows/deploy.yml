@@ -47,6 +47,7 @@ jobs:
             console.log("index.html und manifest OK");
           '
           node --check app/sw.js
+          node --check app/aosync.js
           for f in $(node -e 'JSON.parse(require("fs").readFileSync("app/manifest.webmanifest","utf8")).icons.forEach(i=>console.log(i.src))'); do
             test -f "app/$f" || { echo "::error::Icon fehlt: $f"; exit 1; }
           done

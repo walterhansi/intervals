@@ -13,6 +13,9 @@ const FILES = [
   "icons/apple-touch-icon.png",
   "icons/favicon-48.png",
   "icons/icon.svg",
+  "aosync.js",
+  "lib/qrcode.js",
+  "lib/jsqr.js",
 ];
 
 self.addEventListener("install", e => {

@@ -6,6 +6,12 @@ Format: neueste Version oben. Die Versionsnummer steht in der Datei `VERSION`.
 - **x.Y.0** (Minor): neue Funktionen
 - **X.0.0** (Major): grundlegende Umbauten
 
+## 1.2.0 – 2026-10-11
+
+- **Übertragung PC → Handy per QR-Code:** Unter „Aus Liste holen“ gibt es „Senden (QR)“ und „Empfangen (QR)“. Das sendende Gerät zeigt die gesicherte Intervall-Liste als QR-Code (bei viel Inhalt mehrere Codes im Wechsel), das empfangende scannt ihn mit der Kamera. Kein Internet und kein Konto nötig.
+- Auf dem empfangenden Gerät wird nichts gelöscht. Bei gleichem Namen (Groß-/Kleinschreibung egal) gewinnt die Fassung mit dem jüngeren Sicherungszeitpunkt. Danach zeigt die App, was neu, aktualisiert oder behalten wurde.
+- Jedes Programm merkt sich jetzt seinen Sicherungszeitpunkt. Programme, die vor dieser Version gesichert wurden, haben noch keinen; existieren sie auf beiden Geräten mit unterschiedlichem Inhalt, bleibt das Handy unverändert und die App weist darauf hin.
+
 ## 1.1.0 – 2026-10-09
 
 - **Training fortsetzen:** Wird die App während eines Trainings geschlossen oder stürzt ab, bietet sie beim nächsten Öffnen „Training fortsetzen?“ an. Trainingszeit und Intervall laufen nach der echten Uhrzeit weiter.

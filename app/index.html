@@ -8,6 +8,7 @@
 <meta name="description" content="Große Pulsanzeige mit Intervalltraining fürs Radfahren – Puls per Bluetooth von der Amazfit-Uhr.">
 <meta name="app-version" content="__APP_VERSION__">
 <link rel="manifest" href="manifest.webmanifest">
+<script src="aosync.js" defer></script>
 <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
 <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -337,6 +338,7 @@
   <dialog id="dlgLoad">
     <h3>Aus Liste holen</h3>
     <div id="libList"></div>
+    <div class="row" style="margin-bottom:10px"><button id="libSend">Senden (QR)</button><button id="libReceive">Empfangen (QR)</button></div>
     <button id="loadClose" style="width:100%">Schließen</button>
   </dialog>
 </div>
@@ -366,6 +368,7 @@
     rows: load("rows", DEFAULT_ROWS).map(r => ({ m: r.m, s: r.s, c: r.c, copy: false, del: false })),
     locked: load("locked", false),
     lib: load("lib", {}),
+    libTs: load("libTs", {}),   // Sicherungszeitpunkt je Programm (für die Übertragung: jüngere Fassung gewinnt)
     lastName: load("lastName", ""),
   };
 
@@ -1030,8 +1033,8 @@
   $("saveCancel").onclick = () => $("dlgSave").close();
   $("saveOk").onclick = () => {
     const n = $("saveName").value.trim(); if (!n) return;
-    st.lib[n] = cleanRows(st.rows); st.lastName = n;
-    save("lib", st.lib); save("lastName", n);
+    st.lib[n] = cleanRows(st.rows); st.lastName = n; st.libTs[n] = Date.now();
+    save("lib", st.lib); save("libTs", st.libTs); save("lastName", n);
     $("dlgSave").close(); toast(`„${n}“ gesichert.`);
   };
 
@@ -1055,10 +1058,70 @@
       st.lastName = n; save("lastName", n); persistRows(); renderIv();
       $("dlgLoad").close(); toast(`„${n}“ geladen.`);
     } else if (b.dataset.a === "del") {
-      if (b.dataset.sure) { delete st.lib[n]; save("lib", st.lib); renderLib(); }
+      if (b.dataset.sure) { delete st.lib[n]; delete st.libTs[n]; save("lib", st.lib); save("libTs", st.libTs); renderLib(); }
       else { b.dataset.sure = "1"; b.textContent = "Sicher?"; b.style.background = "#b91c1c"; }
     }
   });
+
+  // ---------- Übertragung zwischen Geräten (QR) ----------
+  // Nur die gesicherte Liste. Auf dem Zielgerät wird nichts gelöscht;
+  // bei gleichem Namen gewinnt die Fassung mit dem jüngeren Sicherungszeitpunkt.
+  const normName = n => String(n || "").trim().toLowerCase();
+  const validRow = r => Array.isArray(r) && [0, 1, 2].every(i => Number.isInteger(r[i]))
+    && r[0] >= 0 && r[0] <= 99 && r[1] >= 0 && r[1] <= 59 && r[2] >= 0 && r[2] <= 9 && r[0] * 60 + r[1] >= 1;
+  function importLib(data) {
+    if (!data || data.v !== 1 || !Array.isArray(data.l)) throw new Error("Unbekanntes Datenformat.");
+    const res = { added: [], updated: [], kept: [], unknown: [] };
+    for (const item of data.l) {
+      if (!Array.isArray(item)) continue;
+      const [rawName, ts, rows] = item;
+      const name = typeof rawName === "string" ? rawName.trim().slice(0, 40) : "";
+      if (!name || !Array.isArray(rows) || !rows.length || !rows.every(validRow)) continue;
+      const t = Number(ts) || 0;
+      const local = Object.keys(st.lib).find(k => normName(k) === normName(name));
+      const clean = rows.map(r => ({ m: r[0], s: r[1], c: r[2] }));
+      if (local === undefined) {
+        st.lib[name] = clean; st.libTs[name] = t; res.added.push(name);
+      } else if (t > (st.libTs[local] || 0)) {
+        delete st.lib[local]; delete st.libTs[local];
+        st.lib[name] = clean; st.libTs[name] = t; res.updated.push(name);
+      } else if (!t && !st.libTs[local] && JSON.stringify(cleanRows(st.lib[local])) !== JSON.stringify(clean)) {
+        res.unknown.push(local);   // beide ohne Zeitpunkt (vor Version 1.2 gesichert) – hier bleibt alles, wie es ist
+      } else {
+        res.kept.push(local);
+      }
+    }
+    save("lib", st.lib); save("libTs", st.libTs);
+    return res;
+  }
+  $("libSend").onclick = () => {
+    if (!window.AOSync) { toast("Übertragung nicht verfügbar – bitte App neu laden.", true); return; }
+    const names = Object.keys(st.lib);
+    if (!names.length) { toast("Noch keine gesicherten Intervalle zum Senden."); return; }
+    $("dlgLoad").close();
+    window.AOSync.send({
+      app: "puls",
+      data: { v: 1, l: names.map(n => [n, st.libTs[n] || 0, st.lib[n].map(r => [r.m, r.s, r.c])]) },
+      summary: names.length === 1 ? "1 gesichertes Intervall-Programm" : `${names.length} gesicherte Intervall-Programme`
+    });
+  };
+  $("libReceive").onclick = () => {
+    if (!window.AOSync) { toast("Übertragung nicht verfügbar – bitte App neu laden.", true); return; }
+    $("dlgLoad").close();
+    window.AOSync.receive({
+      app: "puls",
+      apply: data => {
+        const r = importLib(data);
+        const line = (label, arr) => arr.length ? `${label} (${arr.length}): ${arr.join(", ")}` : "";
+        return [
+          line("Neu", r.added),
+          line("Aktualisiert", r.updated),
+          line("Behalten, weil hier gleich alt oder neuer", r.kept),
+          line("Behalten, Alter unbekannt – am PC einmal neu sichern und erneut senden", r.unknown)
+        ].filter(Boolean).join("\n") || "Keine Intervall-Programme im Code gefunden.";
+      }
+    });
+  };
 
   // ---------- Version ----------
   const APP_VERSION = "__APP_VERSION__";
