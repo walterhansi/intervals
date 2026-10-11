@@ -6,6 +6,10 @@ Format: neueste Version oben. Die Versionsnummer steht in der Datei `VERSION`.
 - **x.Y.0** (Minor): neue Funktionen
 - **X.0.0** (Major): grundlegende Umbauten
 
+## 1.3.1 – 2026-10-11
+
+- Anleitungstexte beim Senden und Einlesen nennen jetzt die tatsächlichen Knöpfe („QR einlesen“ bzw. „QR fürs Handy“ unter Intervals oder Zones).
+
 ## 1.3.0 – 2026-10-11
 
 - **QR-Übertragung direkt auf Intervals und Zones:** Knöpfe „QR fürs Handy“ (grün) und „QR einlesen“ statt versteckt unter „Aus Liste holen“.
