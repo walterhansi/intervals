@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ao Puls – Anleitung</title>
+<style>
+  :root { --bg: #000; --panel: #121214; --line: #2a2a30; --fg: #f2f2f2; --dim: #a1a1aa; --accent: #0a84ff; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); }
+  body { font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding: 16px 16px 40px; max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 24px; margin: 4px 0 2px; }
+  .sub { color: var(--dim); margin: 0 0 14px; }
+  nav.toc { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+  nav.toc a { color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 5px 11px; font-size: 14px; text-decoration: none; }
+  h2 { font-size: 19px; margin: 26px 0 8px; padding-top: 6px; border-top: 1px solid var(--line); }
+  h3 { font-size: 16px; margin: 16px 0 4px; }
+  p { margin: 6px 0; }
+  ul, ol { margin: 6px 0; padding-left: 22px; }
+  li { margin: 3px 0; }
+  b { font-weight: 700; }
+  .k { display: inline-block; background: #1c1c20; border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; font-size: 14px; white-space: nowrap; }
+  .card { background: var(--panel); border-radius: 12px; padding: 10px 14px; margin: 10px 0; }
+  .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; margin: 6px 0; }
+  td { padding: 6px 6px; border-top: 1px solid var(--line); vertical-align: top; }
+  td:first-child { white-space: nowrap; font-weight: 700; padding-right: 10px; }
+  .note { color: var(--dim); font-size: 14px; }
+</style>
+</head>
+<body>
+<h1>ao Puls – Anleitung</h1>
+<p class="sub">Pulsgesteuertes Training mit Zonen und Intervallen. Puls kommt per Bluetooth von der Uhr.</p>
+<nav class="toc">
+  <a href="#start">Schnellstart</a><a href="#anzeige">Anzeige lesen</a><a href="#faelle">Anwendungsfälle</a>
+  <a href="#intervalle">Intervalle bauen</a><a href="#pc">PC → Handy</a><a href="#fahrt">Unterwegs</a><a href="#hilfe">Probleme</a>
+</nav>
+
+<h2 id="start">Schnellstart</h2>
+<ol>
+  <li><b>Uhr vorbereiten:</b> Herzfrequenz-Übertragung (z. B. „Herzfrequenz-Push“) auf der Uhr einschalten.</li>
+  <li><b>Bluetooth:</b> <span class="k">Verbinden</span> tippen und die Uhr wählen. Beim nächsten Mal genügt <span class="k">Mit … verbinden</span>; die App verbindet sich nach Abbrüchen selbst neu.</li>
+  <li><b>Zones:</b> einmalig deine fünf Zonengrenzen eintragen (siehe unten).</li>
+  <li><b>Measure:</b> <span class="k">Start</span> für freies Training oder <span class="k">Start mit Intervall</span> für eine geplante Einheit.</li>
+</ol>
+
+<h2 id="anzeige">Anzeige lesen (Measure)</h2>
+<table>
+  <tr><td>Kreis</td><td>Dein <b>aktueller Puls</b>, gefärbt nach der Zone, in der du gerade bist.</td></tr>
+  <tr><td>Fläche</td><td>Im Intervall die <b>Soll-Zone</b> des laufenden Abschnitts. Ohne Intervall hat sie die Farbe des Kreises.</td></tr>
+  <tr><td>Gleiche Farbe</td><td>Du triffst das Soll. Oben mittig erscheinen <b>Haken</b>: 1 nach 5 s, 2 nach 15 s, 3 nach 25 s.</td></tr>
+  <tr><td>Pfeile</td><td>Kreis blinkt, Pfeil links ↓ = Puls zu hoch, rechts ↑ = zu niedrig. 1 Pfeil: bis 8 Schläge daneben, 2: bis 12, 3: ab 13.</td></tr>
+  <tr><td>Weißer Ring</td><td>Restzeit des Abschnitts. Startet voll bei 12 Uhr und leert sich im Uhrzeigersinn.</td></tr>
+  <tr><td>„Gleich: …“</td><td>5 s vor dem Wechsel: nächste Zone oben als Text, Rand in der neuen Farbe.</td></tr>
+  <tr><td>Unten</td><td><b>Intervall</b> = Restzeit des Abschnitts · <b>SOLL</b> = Pulsbereich · <b>Training</b> = Gesamtzeit.</td></tr>
+</table>
+<p class="note"><span class="sw" style="background:#3f3f46"></span>Dunkelgrau: unter Zone 1 · <span class="sw" style="background:#161618;border:1px solid #444"></span>fast schwarz, „--“: kein Signal · <span class="sw" style="background:#a855f7"></span>Lila: Abschnitt „frei“ ohne Sollwert (Ein-/Ausfahren) – dann keine Pfeile und Haken.</p>
+
+<h2 id="faelle">Typische Anwendungsfälle</h2>
+
+<h3>1 · Zonen festlegen</h3>
+<p>Unter <b>Zones</b> trägst du für jede Zone den Puls ein, <b>ab</b> dem sie beginnt; „bis“ rechnet die App selbst. Die Werte müssen ansteigen. Am besten stammen sie aus einer Leistungsdiagnostik oder einem Feldtest (z. B. Schwellentest). Passe sie an, wenn sich deine Form deutlich ändert.</p>
+
+<h3>2 · Grundlage fahren (lange, ruhige Einheit)</h3>
+<p><span class="k">Start</span> ohne Intervall. Ziel: Kreis bleibt in deiner Grundlagen-Zone (meist Z2). Die Trainingszeit läuft mit; <span class="k">Stopp</span> beendet.</p>
+
+<h3>3 · Strukturierte Intervalleinheit</h3>
+<p>Beispiel: 15 min frei einfahren · 5 × (4 min Z4 / 3 min Z2) · 10 min frei ausfahren. Unter <b>Intervals</b> anlegen (siehe nächster Abschnitt), <span class="k">Sichern</span>, dann auf Measure <span class="k">Start mit Intervall</span>. Die App führt dich Abschnitt für Abschnitt durch: Farbe der Fläche, Restzeit-Ring, Vorwarnung vor jedem Wechsel.</p>
+
+<h3>4 · Wiederkehrende Einheiten (Trainingsplan)</h3>
+<p>Jede Einheit einmal bauen und mit <span class="k">In Liste sichern</span> unter einem Namen ablegen, z. B. „Schwelle 3×10“, „VO2 5×4“, „GA1 90“. Am Trainingstag <span class="k">Aus Liste holen</span> → <span class="k">Sichern</span> → losfahren. Gleicher Name überschreibt die alte Fassung.</p>
+
+<h3>5 · Planen am PC, fahren mit dem Handy</h3>
+<p>Am großen Bildschirm mit Tastatur Zonen und Einheiten bearbeiten, dann per QR-Code aufs Handy übertragen – siehe <a href="#pc" style="color:var(--accent)">PC → Handy</a>.</p>
+
+<h3>6 · Unterbrechung</h3>
+<p>Geht die App während einer Einheit zu (Anruf, Absturz, Akku), fragt sie beim nächsten Öffnen <b>„Training fortsetzen?“</b>. Zeit und Abschnitt laufen nach der echten Uhrzeit weiter.</p>
+
+<h2 id="intervalle">Intervalle bauen</h2>
+<ul>
+  <li><b>Zeit:</b> Minuten und Sekunden direkt eintippen.</li>
+  <li><b>Zone:</b> Farbfeld antippen = nächste Zone, lang drücken = eine zurück. Sofort gespeichert. Z1–Z5 oder „frei“.</li>
+  <li><b>Wiederholen:</b> Zeilen bei <b>Kop.</b> anhaken, <span class="k">Ausführen</span> hängt Kopien unten an. Für 5 × (4/3) also ein Paar bauen und mehrfach kopieren.</li>
+  <li><b>Löschen:</b> bei <b>Lösch.</b> anhaken, <span class="k">Ausführen</span>.</li>
+  <li><b>Reihenfolge:</b> <span class="k">Drag&amp;Drop</span> einschalten, Zeilen am Griff ≡ ziehen.</li>
+  <li><b>Sichern:</b> prüft die Tabelle und schaltet <span class="k">Start mit Intervall</span> frei. Danach ist sie gegen versehentliches Ändern gesperrt; erneut tippen zum Bearbeiten.</li>
+</ul>
+<p class="note">Oben stehen Anzahl der Abschnitte und Gesamtdauer – praktisch zum Abgleich mit dem Trainingsplan.</p>
+
+<h2 id="pc">PC → Handy (QR-Code)</h2>
+<ol>
+  <li>App am PC öffnen, Zonen und Intervalle bearbeiten.</li>
+  <li>Auf <b>Intervals</b> oder <b>Zones</b> <span class="k">QR fürs Handy</span>.</li>
+  <li>Am Handy an derselben Stelle <span class="k">QR einlesen</span>, Kamera auf den Bildschirm halten. Bei viel Inhalt wechseln mehrere Codes – draufhalten, bis der Balken voll ist.</li>
+</ol>
+<p>Übertragen werden Zonen, die aktuelle Tabelle und die gesicherte Liste. Auf dem Handy wird <b>nichts gelöscht</b>; bei gleichem Namen gewinnt jeweils die <b>neuere</b> Fassung. Zum Schluss zeigt die App, was neu, aktualisiert oder behalten wurde.</p>
+
+<h2 id="fahrt">Unterwegs</h2>
+<ul>
+  <li><b>Sperren:</b> <span class="k">Sperren</span> 2 s gedrückt halten – Regentropfen oder Handschuhe lösen dann nichts mehr aus. Genauso entsperren.</li>
+  <li><b>Display</b> bleibt während des Trainings an. Bildschirmhelligkeit und Akku im Blick behalten; die Pulsübertragung kostet auch auf der Uhr Strom.</li>
+  <li>Nach dem letzten Abschnitt läuft die Trainingszeit weiter, bis du <span class="k">Stopp</span> tippst.</li>
+</ul>
+
+<h2 id="hilfe">Probleme</h2>
+<table>
+  <tr><td>Uhr nicht in der Liste</td><td>Herzfrequenz-Übertragung auf der Uhr an? Auf Bluetooth hilft ein Schritt-für-Schritt-Assistent, auch „Alle Bluetooth-Geräte anzeigen“.</td></tr>
+  <tr><td>Verbindung bricht ab</td><td>Die App verbindet sich selbst neu. Klappt das nicht: Ist eine andere App (z. B. Fahrrad-App) mit der Uhr verbunden? Meist geht nur ein Empfänger.</td></tr>
+  <tr><td>„--“ im Kreis</td><td>Seit einigen Sekunden kein Pulswert. Sitz der Uhr am Handgelenk prüfen.</td></tr>
+  <tr><td>QR wird nicht gelesen</td><td>Kamerazugriff erlauben, Abstand verändern, Bildschirm heller stellen.</td></tr>
+  <tr><td>„Neue Version verfügbar“</td><td><span class="k">Aktualisieren</span> tippen. Während eines Trainings erscheint der Hinweis nicht.</td></tr>
+  <tr><td>Ohne Uhr ausprobieren</td><td>Bluetooth → „Testmodus ohne Uhr“, Puls per Schieberegler vorgeben.</td></tr>
+</table>
+<p class="note" style="margin-top:18px">Version und Updates: unten auf dem Bluetooth-Bildschirm.</p>
+</body>
+</html>

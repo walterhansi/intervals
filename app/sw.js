@@ -13,6 +13,7 @@ const FILES = [
   "icons/apple-touch-icon.png",
   "icons/favicon-48.png",
   "icons/icon.svg",
+  "anleitung.html",
   "aosync.js",
   "lib/qrcode.js",
   "lib/jsqr.js",
@@ -40,7 +41,9 @@ self.addEventListener("fetch", e => {
   if (req.method !== "GET" || new URL(req.url).origin !== location.origin) return;
   // App-Aufruf (auch mit ?source=pwa) immer aus dem Cache – funktioniert offline
   if (req.mode === "navigate") {
-    e.respondWith(caches.match("index.html", { cacheName: CACHE }).then(r => r || fetch(req)));
+    // Eigene Seiten (z. B. anleitung.html) direkt, alles andere – auch ./?source=pwa – als App
+    const page = new URL(req.url).pathname.endsWith("/anleitung.html") ? "anleitung.html" : "index.html";
+    e.respondWith(caches.match(page, { cacheName: CACHE }).then(r => r || fetch(req)));
     return;
   }
   e.respondWith(caches.match(req, { ignoreSearch: true }).then(r => r || fetch(req)));
