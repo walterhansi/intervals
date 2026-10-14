@@ -6,6 +6,10 @@ Format: neueste Version oben. Die Versionsnummer steht in der Datei `VERSION`.
 - **x.Y.0** (Minor): neue Funktionen
 - **X.0.0** (Major): grundlegende Umbauten
 
+## 1.5.0 – 2026-10-14
+
+- **Haken für „in der Soll-Zone“:** Haben Fläche und Kreis dieselbe Farbe, erscheinen oben mittig Haken – 1 Haken nach 5 s, 2 nach 15 s, 3 nach 25 s. Beim Verlassen der Zone verschwinden sie und die Zählung beginnt beim Zurückkehren neu. Folgt ein Abschnitt mit derselben Zone, läuft die Zählung weiter. Während des Hinweises „Gleich: …“ rücken die Haken etwas nach unten.
+
 ## 1.4.1 – 2026-10-14
 
 - „Intervall“, „SOLL“, „Training“ und die Zahlen darunter ohne weißen Rand. Die Schriftfarbe wird jetzt automatisch nach dem höchsten Kontrast zur Fläche gewählt: schwarz auf allen Zonenfarben und Lila, weiß auf Dunkelgrau und Fast-Schwarz.

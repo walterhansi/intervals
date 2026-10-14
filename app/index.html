@@ -83,6 +83,16 @@
   #rect { box-shadow: inset 0 0 0 0 transparent; transition: background .25s, box-shadow .4s; }
   #nextHint { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); white-space: nowrap;
     font-size: 21px; font-weight: 700; font-variant-numeric: tabular-nums; color: rgba(0,0,0,.62); }
+  /* Haken oben mittig: Puls liegt seit 5 / 15 / 25 s in der Soll-Zone */
+  #checks { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); display: none; gap: 6px; z-index: 2;
+    width: 34%; max-width: 160px; transition: top .2s; }
+  #checks.on { display: flex; justify-content: center; }
+  #checks.low { top: 50px; }   /* Platz für den Hinweis „Gleich: …“ */
+  #checks svg { width: 30%; height: auto; display: none; overflow: visible; }
+  #checks[data-n="1"] svg:nth-child(-n+1), #checks[data-n="2"] svg:nth-child(-n+2), #checks[data-n="3"] svg { display: block; }
+  #checks path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  #checks .o { stroke: #fff; stroke-width: 13; }
+  #checks .i { stroke: #000; stroke-width: 7; }
   #rect.dark #nextHint { color: rgba(255,255,255,.42); }
   @keyframes blink {
     0%, 30%   { background: var(--c); }
@@ -270,6 +280,7 @@
         <div class="rinfo" id="countdown"></div>
         <div class="rinfo" id="targetRange"></div>
         <div id="nextHint"></div>
+        <div id="checks"><svg viewBox="0 0 48 40"><path class="o" d="M6 21 L18 33 L42 7"/><path class="i" d="M6 21 L18 33 L42 7"/></svg><svg viewBox="0 0 48 40"><path class="o" d="M6 21 L18 33 L42 7"/><path class="i" d="M6 21 L18 33 L42 7"/></svg><svg viewBox="0 0 48 40"><path class="o" d="M6 21 L18 33 L42 7"/><path class="i" d="M6 21 L18 33 L42 7"/></svg></div>
         <div class="arrow" id="arrowDown"><svg viewBox="0 0 40 48"><path d="M13 0h14v26h13L20 48 0 26h13z"/></svg><svg viewBox="0 0 40 48"><path d="M13 0h14v26h13L20 48 0 26h13z"/></svg><svg viewBox="0 0 40 48"><path d="M13 0h14v26h13L20 48 0 26h13z"/></svg></div>
         <div class="arrow" id="arrowUp"><svg viewBox="0 0 40 48"><path d="M13 48h14V22h13L20 0 0 22h13z"/></svg><svg viewBox="0 0 40 48"><path d="M13 48h14V22h13L20 0 0 22h13z"/></svg><svg viewBox="0 0 40 48"><path d="M13 48h14V22h13L20 0 0 22h13z"/></svg></div>
         <div class="rinfo" id="trainTime"></div>
@@ -752,7 +763,9 @@
     return { target: null, remain: null, next: null };
   }
 
-  const ARROW_STEPS = [8, 12];   // bis 8 bpm: 1 Pfeil, 9–12 bpm: 2 Pfeile, ab 13 bpm: 3 Pfeile
+  const ARROW_STEPS = [8, 12];
+  const CHECK_STEPS = [5000, 15000, 25000];   // ms in der Soll-Zone für 1 / 2 / 3 Haken
+  let inZoneSince = 0;   // bis 8 bpm: 1 Pfeil, 9–12 bpm: 2 Pfeile, ab 13 bpm: 3 Pfeile
   // Schriftfarbe mit dem größten Kontrast zur Fläche (WCAG-Kontrastverhältnis): reines Schwarz oder reines Weiß
   const lum = hex => {
     const v = [1, 3, 5].map(k => parseInt(hex.slice(k, k + 2), 16) / 255)
@@ -784,6 +797,14 @@
     let gap = 0;
     if (blink) gap = z > target ? hr - (st.zones[target + 1] - 1) : st.zones[target] - hr;
     const nArr = String(gap <= ARROW_STEPS[0] ? 1 : gap <= ARROW_STEPS[1] ? 2 : 3);
+    // Haken: Fläche und Kreis gleichfarbig (Puls in der Soll-Zone) – Anzahl nach Dauer
+    const inZone = target !== null && target < 5 && ok && z === target;
+    if (!inZone) inZoneSince = 0; else if (!inZoneSince) inZoneSince = now;
+    const held = inZone ? now - inZoneSince : 0;
+    const nChk = held >= CHECK_STEPS[2] ? 3 : held >= CHECK_STEPS[1] ? 2 : held >= CHECK_STEPS[0] ? 1 : 0;
+    const ch = $("checks");
+    ch.classList.toggle("on", nChk > 0);
+    if (nChk && ch.dataset.n !== String(nChk)) ch.dataset.n = String(nChk);
     for (const [id, on] of [["arrowDown", blink && z > target], ["arrowUp", blink && z < target]]) {
       const el = $(id);
       el.classList.toggle("on", on);
@@ -812,6 +833,7 @@
       else nh = `Gleich: Z${next + 1} · ` + (next < 4 ? `${st.zones[next]}–${st.zones[next + 1] - 1}` : `ab ${st.zones[4]}`);
     }
     if ($("nextHint").textContent !== nh) $("nextHint").textContent = nh;
+    ch.classList.toggle("low", !!nh);
   }
   setInterval(renderMeasure, 250);
 
