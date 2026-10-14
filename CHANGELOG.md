@@ -6,6 +6,11 @@ Format: neueste Version oben. Die Versionsnummer steht in der Datei `VERSION`.
 - **x.Y.0** (Minor): neue Funktionen
 - **X.0.0** (Major): grundlegende Umbauten
 
+## 1.3.2 – 2026-10-14
+
+- **Zonen-Farbe in Intervals robuster:** Beim Antippen wird nur noch genau die berührte Zeile geändert. Verrutschen des Fingers, Loslassen außerhalb des Felds oder ein zweiter Finger brechen ab, statt eine Nachbarzeile zu treffen.
+- Die Zeile, deren Farbe gerade gewählt wird, ist hervorgehoben.
+
 ## 1.3.1 – 2026-10-11
 
 - Anleitungstexte beim Senden und Einlesen nennen jetzt die tatsächlichen Knöpfe („QR einlesen“ bzw. „QR fürs Handy“ unter Intervals oder Zones).

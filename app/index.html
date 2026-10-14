@@ -160,6 +160,9 @@
   .cc { height: 40px; border-radius: 10px; padding: 0; font-size: 14px; font-weight: 800; color: rgba(0,0,0,.7);
     border: 3px solid transparent; transition: transform .1s; }
   .cc.pending { border: 3px dashed #fff; }
+  .cc { touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  .ivrow.editing { background: #26262c; }
+  .ivrow.editing .nr { color: var(--fg); font-weight: 800; }
   .cc.pressing { transform: scale(.92); }
   .ck { display: flex; justify-content: center; align-items: center; height: 40px; }
   .ck input { width: 26px; height: 26px; accent-color: var(--accent); margin: 0; }
@@ -873,7 +876,6 @@
         <label class="ck"><input type="checkbox" class="cp" ${r.copy ? "checked" : ""} ${st.locked ? "disabled" : ""}></label>
         <label class="ck del"><input type="checkbox" class="dl" ${r.del ? "checked" : ""} ${st.locked ? "disabled" : ""}></label>
       </div>`).join("");
-    $("ivRows").querySelectorAll(".cc").forEach(bindColorCell);
     updateIvSummary();
     $("ivRun").disabled = st.locked;
     $("ivDnd").disabled = st.locked;
@@ -892,31 +894,66 @@
     st.rowsTs = Date.now(); save("rowsTs", st.rowsTs);
   };
 
-  // Farbe: Tippen schaltet weiter, langer Druck übernimmt
-  function bindColorCell(btn) {
-    const i = +btn.closest(".ivrow").dataset.i;
-    longPress(btn, 600, {
-      onStart: () => btn.classList.add("pressing"),
-      onEnd: () => btn.classList.remove("pressing"),
-      onShort: () => {
-        if (st.locked) return;
-        if (!pending || pending.i !== i) { clearPending(); pending = { i, c: st.rows[i].c }; }
-        pending.c = (pending.c + 1) % 6;
-        paintCell(btn, pending.c, true);
-      },
-      onLong: () => {
-        if (st.locked) return;
-        if (pending && pending.i === i) {
-          st.rows[i].c = pending.c; pending = null; persistRows();
-          paintCell(btn, st.rows[i].c, false);
-          if (navigator.vibrate) try { navigator.vibrate(30); } catch {}
-        } else toast("Erst antippen, bis die gewünschte Farbe erscheint, dann lang drücken.");
-      },
-    });
+  // Farbe: Tippen schaltet weiter, langer Druck übernimmt.
+  // Robust gegen Fehlgriffe: Zeile wird beim Antippen aus der Tabelle bestimmt, nur ein Finger zählt,
+  // Verrutschen (> 12 px) oder Loslassen außerhalb des Felds bricht ab. Geändert wird immer nur genau diese Zeile.
+  let cTouch = null;   // { cell, i, id, x, y, timer, done }
+  const cellIndex = cell => { const r = cell.closest(".ivrow"); return r ? +r.dataset.i : -1; };
+  function cAbort() {
+    if (!cTouch) return;
+    clearTimeout(cTouch.timer); cTouch.cell.classList.remove("pressing"); cTouch = null;
+  }
+  $("ivRows").addEventListener("pointerdown", e => {
+    const cell = e.target.closest(".cc");
+    if (!cell) return;
+    if (cTouch) { cAbort(); return; }                    // zweiter Finger: alles abbrechen
+    if (st.locked || (e.button !== undefined && e.button > 0)) return;
+    const i = cellIndex(cell);
+    if (i < 0 || !st.rows[i]) return;
+    cTouch = { cell, i, id: e.pointerId, x: e.clientX, y: e.clientY, done: false };
+    cell.classList.add("pressing");
+    try { cell.setPointerCapture(e.pointerId); } catch {}
+    cTouch.timer = setTimeout(() => {
+      if (!cTouch) return;
+      cTouch.done = true; cell.classList.remove("pressing");
+      colorLong(cTouch.i, cell);
+    }, 600);
+  });
+  $("ivRows").addEventListener("pointermove", e => {
+    if (!cTouch || e.pointerId !== cTouch.id || cTouch.done) return;
+    if (Math.hypot(e.clientX - cTouch.x, e.clientY - cTouch.y) > 12) cAbort();
+  });
+  $("ivRows").addEventListener("pointerup", e => {
+    if (!cTouch || e.pointerId !== cTouch.id) return;
+    const t = cTouch; clearTimeout(t.timer); t.cell.classList.remove("pressing"); cTouch = null;
+    if (t.done) return;
+    const over = document.elementFromPoint(e.clientX, e.clientY);
+    if (!over || over.closest(".cc") !== t.cell) return;   // außerhalb losgelassen
+    if (cellIndex(t.cell) !== t.i) return;                   // Tabelle hat sich inzwischen geändert
+    colorShort(t.i, t.cell);
+  });
+  $("ivRows").addEventListener("pointercancel", e => { if (cTouch && e.pointerId === cTouch.id && !cTouch.done) cAbort(); });
+  $("ivRows").addEventListener("contextmenu", e => { if (e.target.closest(".cc")) e.preventDefault(); });
+
+  function colorShort(i, cell) {
+    if (st.locked) return;
+    if (!pending || pending.i !== i) { clearPending(); pending = { i, c: st.rows[i].c }; }
+    pending.c = (pending.c + 1) % 6;
+    paintCell(cell, pending.c, true);
+  }
+  function colorLong(i, cell) {
+    if (st.locked) return;
+    if (pending && pending.i === i) {
+      st.rows[i] = { ...st.rows[i], c: pending.c };   // neues Objekt: nur diese Zeile ändert sich
+      pending = null; persistRows();
+      paintCell(cell, st.rows[i].c, false);
+      if (navigator.vibrate) try { navigator.vibrate(30); } catch {}
+    } else toast("Erst antippen, bis die gewünschte Farbe erscheint, dann lang drücken.");
   }
   function paintCell(btn, c, isPending) {
     btn.style.background = COLORS6[c]; btn.textContent = LABELS6[c];
     btn.classList.toggle("pending", isPending);
+    const row = btn.closest(".ivrow"); if (row) row.classList.toggle("editing", isPending);
   }
   function clearPending() {
     if (!pending) return;
@@ -958,7 +995,7 @@
     let res = st.rows.filter(r => !r.del).map(r => ({ ...r, copy: false }));
     res = res.concat(copies);
     if (!res.length) { res = [{ ...st.rows[0], copy: false, del: false }]; toast("Mindestens eine Zeile bleibt immer stehen."); }
-    st.rows = res; persistRows(); renderIv();
+    st.rows = res.map(r => ({ ...r })); persistRows(); renderIv();
     $("ivWrap").scrollTop = copies.length ? $("ivWrap").scrollHeight : $("ivWrap").scrollTop;
   };
 
@@ -987,7 +1024,7 @@
   const endDrag = e => {
     if (!drag || e.pointerId !== drag.id) return;
     const order = [...$("ivRows").children].map(el => +el.dataset.i);
-    st.rows = order.map(i => st.rows[i]);
+    st.rows = order.map(i => ({ ...st.rows[i] }));
     drag = null; persistRows(); renderIv();
   };
   $("ivRows").addEventListener("pointerup", endDrag);
