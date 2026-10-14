@@ -10,11 +10,16 @@ Format: neueste Version oben. Die Versionsnummer steht in der Datei `VERSION`.
 
 - „Intervall“, „SOLL“, „Training“ und die Zahlen darunter ohne weißen Rand. Die Schriftfarbe wird jetzt automatisch nach dem höchsten Kontrast zur Fläche gewählt: schwarz auf allen Zonenfarben und Lila, weiß auf Dunkelgrau und Fast-Schwarz.
 
+## 1.4.1 – 2026-10-14
+
+- „Intervall“, „SOLL“, „Training“ und die Zahlen darunter ohne weißen Rand. Die Schriftfarbe wird automatisch nach dem höchsten Kontrast zur Fläche gewählt: schwarz auf allen Zonenfarben und Lila, weiß auf Dunkelgrau und Fast-Schwarz.
+- Richtungspfeile neu abgestuft: 1 Pfeil bis 8 bpm, 2 Pfeile 9–12 bpm, 3 Pfeile ab 13 bpm Abstand zur Soll-Zone.
+
 ## 1.4.0 – 2026-10-14
 
 - **Restzeit-Ring:** Während eines Intervalls umgibt ein weißer Ring den Pulskreis. Er startet voll bei 12 Uhr und leert sich im Uhrzeigersinn bis zum Ende des aktiven Abschnitts.
 - **Besser lesbar:** „Intervall“, „SOLL“, „Training“ und die Zahlen darunter sind etwas größer, schwarz mit weißem Rand.
-- **Stärkere Richtungspfeile:** schwarz mit weißem Rand; Anzahl zeigt den Abstand zur Soll-Zone – 1 Pfeil bis 5 bpm, 2 Pfeile bis 15 bpm, 3 Pfeile darüber.
+- **Stärkere Richtungspfeile:** schwarz mit weißem Rand; Anzahl zeigt den Abstand zur Soll-Zone – 1 Pfeil bis 5 bpm, 2 Pfeile bis 15 bpm, 3 Pfeile darüber (ab 1.4.1 geändert).
 
 ## 1.3.3 – 2026-10-14
 

@@ -752,7 +752,7 @@
     return { target: null, remain: null, next: null };
   }
 
-  const ARROW_STEPS = [5, 15];
+  const ARROW_STEPS = [8, 12];   // bis 8 bpm: 1 Pfeil, 9–12 bpm: 2 Pfeile, ab 13 bpm: 3 Pfeile
   // Schriftfarbe mit dem größten Kontrast zur Fläche (WCAG-Kontrastverhältnis): reines Schwarz oder reines Weiß
   const lum = hex => {
     const v = [1, 3, 5].map(k => parseInt(hex.slice(k, k + 2), 16) / 255)
@@ -780,7 +780,7 @@
     c.textContent = ok ? hr : "--";
     c.style.setProperty("--c", cur);
     const blink = target !== null && target < 5 && ok && z !== target;
-    // Abstand zur Soll-Zone in bpm → Anzahl Pfeile (bis 5 bpm: 1, bis 15 bpm: 2, darüber: 3)
+    // Abstand zur Soll-Zone in bpm → Anzahl Pfeile (siehe ARROW_STEPS)
     let gap = 0;
     if (blink) gap = z > target ? hr - (st.zones[target + 1] - 1) : st.zones[target] - hr;
     const nArr = String(gap <= ARROW_STEPS[0] ? 1 : gap <= ARROW_STEPS[1] ? 2 : 3);
