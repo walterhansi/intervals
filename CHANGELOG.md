@@ -6,6 +6,12 @@ Format: neueste Version oben. Die Versionsnummer steht in der Datei `VERSION`.
 - **x.Y.0** (Minor): neue Funktionen
 - **X.0.0** (Major): grundlegende Umbauten
 
+## 1.4.0 – 2026-10-14
+
+- **Restzeit-Ring:** Während eines Intervalls umgibt ein weißer Ring den Pulskreis. Er startet voll bei 12 Uhr und leert sich im Uhrzeigersinn bis zum Ende des aktiven Abschnitts.
+- **Besser lesbar:** „Intervall“, „SOLL“, „Training“ und die Zahlen darunter sind etwas größer, schwarz mit weißem Rand.
+- **Stärkere Richtungspfeile:** schwarz mit weißem Rand; Anzahl zeigt den Abstand zur Soll-Zone – 1 Pfeil bis 5 bpm, 2 Pfeile bis 15 bpm, 3 Pfeile darüber.
+
 ## 1.3.3 – 2026-10-14
 
 - **Zonen-Farbe sofort gespeichert:** Jeder Tipp schaltet zur nächsten Zone und ist sofort übernommen. Langer Druck geht eine Zone zurück. Bisher musste man lang drücken, sonst wurde die Änderung beim Antippen einer anderen Zeile verworfen.

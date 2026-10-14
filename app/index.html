@@ -66,12 +66,20 @@
     -webkit-text-stroke: 0.045em #fff; paint-order: stroke fill;
     box-shadow: 0 0 0 6px rgba(0,0,0,.55); }
   #circle.blink { animation: blink 1.3s ease-in-out infinite; }
-  .arrow { position: absolute; top: 22px; width: 15%; max-width: 70px; display: none; }
-  .arrow svg { width: 100%; height: auto; display: block; }
-  .arrow path { fill: rgba(0,0,0,.62); }
-  #arrowDown { left: 22px; }
-  #arrowUp { right: 22px; }
-  .arrow.on { display: block; }
+  /* Restzeit-Ring des aktiven Intervalls: startet voll bei 12 Uhr und leert sich im Uhrzeigersinn */
+  #ring { position: absolute; left: 50%; transform: translate(-50%, -50%) rotate(-90deg); display: none; overflow: visible; pointer-events: none; }
+  #ring.on { display: block; }
+  #ring circle { fill: none; }
+  #ring .trk { stroke: rgba(0,0,0,.45); stroke-width: 8; }
+  #ring .arc { stroke: #fff; stroke-width: 6; stroke-linecap: butt; transition: stroke-dasharray .25s linear, stroke-dashoffset .25s linear; }
+  /* Richtungspfeile: 1 = knapp daneben, 2 = mittlerer, 3 = großer Abstand zur Soll-Zone */
+  .arrow { position: absolute; top: 14px; width: 10%; max-width: 46px; display: none; flex-direction: column; gap: 3px; z-index: 2; }
+  .arrow svg { width: 100%; height: auto; display: none; overflow: visible; }
+  .arrow path { fill: #000; stroke: #fff; stroke-width: 3; paint-order: stroke fill; stroke-linejoin: round; }
+  .arrow[data-n="1"] svg:nth-child(-n+1), .arrow[data-n="2"] svg:nth-child(-n+2), .arrow[data-n="3"] svg { display: block; }
+  #arrowDown { left: 14px; }
+  #arrowUp { right: 14px; }
+  .arrow.on { display: flex; }
   #rect { box-shadow: inset 0 0 0 0 transparent; transition: background .25s, box-shadow .4s; }
   #nextHint { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); white-space: nowrap;
     font-size: 21px; font-weight: 700; font-variant-numeric: tabular-nums; color: rgba(0,0,0,.62); }
@@ -81,9 +89,8 @@
     50%, 80%  { background: #000; }
     100%      { background: var(--c); }
   }
-  .rinfo { position: absolute; bottom: 9px; font-size: 21px; font-variant-numeric: tabular-nums; font-weight: 700;
-    color: rgba(0,0,0,.62); }
-  #rect.dark .rinfo { color: rgba(255,255,255,.42); }
+  .rinfo { position: absolute; bottom: 9px; font-size: 24px; font-variant-numeric: tabular-nums; font-weight: 800;
+    color: #000; -webkit-text-stroke: 4px #fff; paint-order: stroke fill; z-index: 2; }
   #countdown { left: 14px; text-align: left; }
   #trainTime { right: 14px; text-align: right; }
   .rinfo .lbl { line-height: 1.15; }
@@ -255,12 +262,16 @@
     <!-- ===== MEASURE ===== -->
     <section class="screen" id="s-measure">
       <div id="rect">
+        <svg id="ring" viewBox="0 0 100 100" aria-hidden="true">
+          <circle class="trk" cx="50" cy="50" r="46"/>
+          <circle class="arc" id="ringArc" cx="50" cy="50" r="46" pathLength="1000"/>
+        </svg>
         <div id="circle">--</div>
         <div class="rinfo" id="countdown"></div>
         <div class="rinfo" id="targetRange"></div>
         <div id="nextHint"></div>
-        <div class="arrow" id="arrowDown"><svg viewBox="0 0 40 48"><path d="M13 0h14v26h13L20 48 0 26h13z"/></svg></div>
-        <div class="arrow" id="arrowUp"><svg viewBox="0 0 40 48"><path d="M13 48h14V22h13L20 0 0 22h13z"/></svg></div>
+        <div class="arrow" id="arrowDown"><svg viewBox="0 0 40 48"><path d="M13 0h14v26h13L20 48 0 26h13z"/></svg><svg viewBox="0 0 40 48"><path d="M13 0h14v26h13L20 48 0 26h13z"/></svg><svg viewBox="0 0 40 48"><path d="M13 0h14v26h13L20 48 0 26h13z"/></svg></div>
+        <div class="arrow" id="arrowUp"><svg viewBox="0 0 40 48"><path d="M13 48h14V22h13L20 0 0 22h13z"/></svg><svg viewBox="0 0 40 48"><path d="M13 48h14V22h13L20 0 0 22h13z"/></svg><svg viewBox="0 0 40 48"><path d="M13 48h14V22h13L20 0 0 22h13z"/></svg></div>
         <div class="rinfo" id="trainTime"></div>
       </div>
       <div id="mctl">
@@ -718,11 +729,16 @@
   function sizeCircle() {
     const r = $("rect").getBoundingClientRect();
     if (!r.width) return;
-    const d = Math.floor(Math.min(r.width, r.height - 40) * 0.94);
+    const m = Math.min(r.width, r.height - 40);
+    const ring = Math.floor(m * 0.96);                 // Außendurchmesser Restzeit-Ring
+    const d = Math.floor(ring * 0.86);                 // Pulskreis innerhalb des Rings
     const c = $("circle");
     c.style.width = c.style.height = d + "px";
     c.style.fontSize = Math.floor(d * 0.42) + "px";
     c.style.top = `calc(50% - 14px)`;
+    const g = $("ring");
+    g.style.width = g.style.height = ring + "px";
+    g.style.top = `calc(50% - 14px)`;
   }
   new ResizeObserver(sizeCircle).observe($("rect"));
 
@@ -731,24 +747,41 @@
     const el = now - train.startAt; let acc = 0;
     for (let i = 0; i < train.segs.length; i++) {
       acc += train.segs[i].dur;
-      if (el < acc) return { target: train.segs[i].c, remain: acc - el, next: i + 1 < train.segs.length ? train.segs[i + 1].c : "end" };
+      if (el < acc) return { target: train.segs[i].c, remain: acc - el, dur: train.segs[i].dur, next: i + 1 < train.segs.length ? train.segs[i + 1].c : "end" };
     }
     return { target: null, remain: null, next: null };
   }
 
+  const ARROW_STEPS = [5, 15];   // bpm-Grenzen für 1 / 2 / 3 Pfeile
   function renderMeasure() {
     const now = Date.now();
     const ok = signalOk();
     const z = ok ? zoneOf(hr) : null;
     const cur = !ok ? NOSIG : z < 0 ? BELOW : ZONE_COLORS[z];
-    const { target, remain, next } = currentTarget(now);
+    const { target, remain, dur, next } = currentTarget(now);
+    // Restzeit-Ring: sichtbar bleibt der Rest von der aktuellen Position bis 12 Uhr
+    const ringOn = remain !== null && dur > 0;
+    $("ring").classList.toggle("on", ringOn);
+    if (ringOn) {
+      const left = Math.max(0, Math.min(1000, Math.round(1000 * remain / dur)));
+      const a = $("ringArc");
+      a.style.strokeDasharray = `${left} 1000`;
+      a.style.strokeDashoffset = `${-(1000 - left)}`;
+    }
     const rectColor = target !== null ? COLORS6[target] : cur;
     const c = $("circle"), r = $("rect");
     c.textContent = ok ? hr : "--";
     c.style.setProperty("--c", cur);
     const blink = target !== null && target < 5 && ok && z !== target;
-    $("arrowDown").classList.toggle("on", blink && z > target);  // Puls zu hoch → runter
-    $("arrowUp").classList.toggle("on", blink && z < target);    // Puls zu niedrig → hoch
+    // Abstand zur Soll-Zone in bpm → Anzahl Pfeile (bis 5 bpm: 1, bis 15 bpm: 2, darüber: 3)
+    let gap = 0;
+    if (blink) gap = z > target ? hr - (st.zones[target + 1] - 1) : st.zones[target] - hr;
+    const nArr = String(gap <= ARROW_STEPS[0] ? 1 : gap <= ARROW_STEPS[1] ? 2 : 3);
+    for (const [id, on] of [["arrowDown", blink && z > target], ["arrowUp", blink && z < target]]) {
+      const el = $(id);
+      el.classList.toggle("on", on);
+      if (on && el.dataset.n !== nArr) el.dataset.n = nArr;
+    }
     if (c.classList.contains("blink") !== blink) c.classList.toggle("blink", blink);
     r.style.background = rectColor;
     r.classList.toggle("dark", rectColor === NOSIG || rectColor === BELOW);
