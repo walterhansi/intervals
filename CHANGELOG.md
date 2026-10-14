@@ -6,6 +6,10 @@ Format: neueste Version oben. Die Versionsnummer steht in der Datei `VERSION`.
 - **x.Y.0** (Minor): neue Funktionen
 - **X.0.0** (Major): grundlegende Umbauten
 
+## 1.3.3 – 2026-10-14
+
+- **Zonen-Farbe sofort gespeichert:** Jeder Tipp schaltet zur nächsten Zone und ist sofort übernommen. Langer Druck geht eine Zone zurück. Bisher musste man lang drücken, sonst wurde die Änderung beim Antippen einer anderen Zeile verworfen.
+
 ## 1.3.2 – 2026-10-14
 
 - **Zonen-Farbe in Intervals robuster:** Beim Antippen wird nur noch genau die berührte Zeile geändert. Verrutschen des Fingers, Loslassen außerhalb des Felds oder ein zweiter Finger brechen ab, statt eine Nachbarzeile zu treffen.

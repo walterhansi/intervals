@@ -859,7 +859,7 @@
   });
 
   // ---------- Intervals ----------
-  let dnd = false, pending = null;  // pending = { i, c } – Farbe angetippt, noch nicht bestätigt
+  let dnd = false, pending = null;  // pending wird nicht mehr genutzt (Farbe wird sofort gespeichert)
 
   function totalMs(rows) { return rows.reduce((a, r) => a + (r.m * 60 + r.s) * 1000, 0); }
 
@@ -894,7 +894,7 @@
     st.rowsTs = Date.now(); save("rowsTs", st.rowsTs);
   };
 
-  // Farbe: Tippen schaltet weiter, langer Druck übernimmt.
+  // Farbe: Tippen = nächste Zone, langer Druck = eine Zone zurück; beides sofort gespeichert.
   // Robust gegen Fehlgriffe: Zeile wird beim Antippen aus der Tabelle bestimmt, nur ein Finger zählt,
   // Verrutschen (> 12 px) oder Loslassen außerhalb des Felds bricht ab. Geändert wird immer nur genau diese Zeile.
   let cTouch = null;   // { cell, i, id, x, y, timer, done }
@@ -935,20 +935,21 @@
   $("ivRows").addEventListener("pointercancel", e => { if (cTouch && e.pointerId === cTouch.id && !cTouch.done) cAbort(); });
   $("ivRows").addEventListener("contextmenu", e => { if (e.target.closest(".cc")) e.preventDefault(); });
 
-  function colorShort(i, cell) {
-    if (st.locked) return;
-    if (!pending || pending.i !== i) { clearPending(); pending = { i, c: st.rows[i].c }; }
-    pending.c = (pending.c + 1) % 6;
-    paintCell(cell, pending.c, true);
+  // Jeder Tipp schaltet zur nächsten Zone und ist sofort gespeichert; langer Druck geht eine Zone zurück.
+  let flashT = null;
+  function setColor(i, cell, c) {
+    if (st.locked || !st.rows[i]) return;
+    st.rows[i] = { ...st.rows[i], c };   // neues Objekt: nur diese Zeile ändert sich
+    persistRows();
+    paintCell(cell, c, false);
+    $("ivRows").querySelectorAll(".ivrow.editing").forEach(r => r.classList.remove("editing"));
+    const row = cell.closest(".ivrow"); row.classList.add("editing");
+    clearTimeout(flashT); flashT = setTimeout(() => row.classList.remove("editing"), 1200);
   }
+  function colorShort(i, cell) { setColor(i, cell, (st.rows[i].c + 1) % 6); }
   function colorLong(i, cell) {
-    if (st.locked) return;
-    if (pending && pending.i === i) {
-      st.rows[i] = { ...st.rows[i], c: pending.c };   // neues Objekt: nur diese Zeile ändert sich
-      pending = null; persistRows();
-      paintCell(cell, st.rows[i].c, false);
-      if (navigator.vibrate) try { navigator.vibrate(30); } catch {}
-    } else toast("Erst antippen, bis die gewünschte Farbe erscheint, dann lang drücken.");
+    setColor(i, cell, (st.rows[i].c + 5) % 6);
+    if (navigator.vibrate) try { navigator.vibrate(30); } catch {}
   }
   function paintCell(btn, c, isPending) {
     btn.style.background = COLORS6[c]; btn.textContent = LABELS6[c];
