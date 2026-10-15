@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#131419">
 <title>ao Puls-Intervalle</title>
 <meta name="description" content="Große Pulsanzeige mit Intervalltraining fürs Radfahren – Puls per Bluetooth von der Amazfit-Uhr.">
 <meta name="app-version" content="__APP_VERSION__">
@@ -17,14 +17,22 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <style>
   :root {
-    --bg: #000;
-    --panel: #121214;
-    --panel2: #1c1c20;
-    --line: #2a2a30;
-    --fg: #f2f2f2;
-    --dim: #8b8b93;
-    --accent: #0a84ff;
-    --ok: #22c55e;
+    /* ao-Farbwelt: dunkles Anthrazit, kräftige Flächenfarben */
+    --bg: #131419;
+    --panel: #1d1f27;
+    --panel2: #2a2c35;
+    --line: #34363d;
+    --fg: #ffffff;
+    --dim: #b8bac1;
+    --muted: #717378;
+    --accent: #124f92;
+    --ok: #1cd98f;
+    --green: #247d4d;
+    --red: #cc2d3f;
+    --red-text: #ff6b7b;
+    --orange: #f9a73b;
+    /* QR-Dialog (aosync.js) */
+    --aos-bg: #1d1f27; --aos-btn: #2a2c35; --aos-primary: #124f92; --aos-ok: #1cd98f; --aos-text: #ffffff; --aos-dim: #b8bac1; --aos-err: #ff6b7b;
     --nav-h: 68px;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -38,40 +46,40 @@
   .screen.active { display: flex; }
   h2 { margin: 4px 2px 10px; font-size: 20px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; }
   /* Anleitung: kleiner, unauffälliger Verweis oben rechts */
-  .helpBtn { width: 26px; height: 26px; padding: 0; border-radius: 50%; background: transparent; border: 1px solid #3a3a42;
-    color: #6b6b74; font-size: 14px; font-weight: 700; line-height: 1; flex: none; }
+  .helpBtn { width: 26px; height: 26px; padding: 0; border-radius: 50%; background: transparent; border: 1px solid var(--line);
+    color: var(--muted); font-size: 14px; font-weight: 700; line-height: 1; flex: none; }
   #dlgHelp { width: min(760px, 100vw); height: 100dvh; max-width: 100vw; max-height: 100dvh; margin: 0 auto; padding: 0;
-    border: 0; border-radius: 0; background: #000; display: none; flex-direction: column; }
+    border: 0; border-radius: 0; background: var(--bg); display: none; flex-direction: column; }
   #dlgHelp[open] { display: flex; }
-  #helpFrame { flex: 1; width: 100%; border: 0; background: #000; }
+  #helpFrame { flex: 1; width: 100%; border: 0; background: var(--bg); }
   #helpClose { margin: 8px 12px calc(8px + env(safe-area-inset-bottom)); padding: 14px; }
   button { font: inherit; color: var(--fg); background: var(--panel2); border: 0; border-radius: 12px;
     padding: 12px 10px; font-weight: 600; font-size: 15px; cursor: pointer; user-select: none;
     -webkit-user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
   button:disabled { opacity: .3; cursor: default; }
   button.primary { background: var(--accent); }
-  button.green { background: #15803d; }
+  button.green { background: var(--green); }
   button:not(:disabled):active { filter: brightness(1.35); }
   .row { display: flex; gap: 8px; }
   .row > * { flex: 1; }
 
   /* ---------- Navigation ---------- */
   nav { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 6px 8px calc(8px + env(safe-area-inset-bottom));
-    background: #0a0a0b; border-top: 1px solid var(--line); height: calc(var(--nav-h) + env(safe-area-inset-bottom)); }
+    background: #0f1014; border-top: 1px solid var(--line); height: calc(var(--nav-h) + env(safe-area-inset-bottom)); }
   nav button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
     padding: 6px 2px; background: transparent; color: var(--dim); font-size: 12px; font-weight: 600; border-radius: 10px; }
   nav button svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   nav button.active { color: var(--fg); background: var(--panel2); }
-  nav button .badge { width: 7px; height: 7px; border-radius: 50%; background: #c33; position: absolute; margin: -16px 0 0 22px; }
+  nav button .badge { width: 7px; height: 7px; border-radius: 50%; background: var(--red); position: absolute; margin: -16px 0 0 22px; }
   nav button .badge.ok { background: var(--ok); }
   nav button { position: relative; }
 
   /* ---------- Measure ---------- */
-  #rect { position: relative; flex: 1; min-height: 0; border-radius: 18px; background: #161618; transition: background .25s; }
+  #rect { position: relative; flex: 1; min-height: 0; border-radius: 18px; background: #1d1f27; transition: background .25s; }
   #circle { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border-radius: 50%;
     display: flex; align-items: center; justify-content: center; font-weight: 800; font-variant-numeric: tabular-nums;
-    letter-spacing: -0.04em; line-height: 1; background: var(--c); color: #000;
-    -webkit-text-stroke: 0.045em #fff; paint-order: stroke fill;
+    letter-spacing: -0.04em; line-height: 1; background: var(--c); color: var(--ctxt, #000);
+    -webkit-text-stroke: 0.045em var(--cstroke, #fff); paint-order: stroke fill;
     box-shadow: 0 0 0 6px rgba(0,0,0,.55); }
   #circle.blink { animation: blink 1.3s ease-in-out infinite; }
   /* Restzeit-Ring des aktiven Intervalls: startet voll bei 12 Uhr und leert sich im Uhrzeigersinn */
@@ -90,7 +98,7 @@
   .arrow.on { display: flex; }
   #rect { box-shadow: inset 0 0 0 0 transparent; transition: background .25s, box-shadow .4s; }
   #nextHint { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); white-space: nowrap;
-    font-size: 21px; font-weight: 700; font-variant-numeric: tabular-nums; color: rgba(0,0,0,.62); }
+    font-size: 21px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--rtxt, #000); }
   /* Haken oben mittig: Puls liegt seit 5 / 15 / 25 s in der Soll-Zone */
   #checks { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); display: none; gap: 6px; z-index: 2;
     width: 34%; max-width: 160px; transition: top .2s; }
@@ -101,10 +109,9 @@
   #checks path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
   #checks .o { stroke: #fff; stroke-width: 13; }
   #checks .i { stroke: #000; stroke-width: 7; }
-  #rect.dark #nextHint { color: rgba(255,255,255,.42); }
   @keyframes blink {
     0%, 30%   { background: var(--c); }
-    50%, 80%  { background: #000; }
+    50%, 80%  { background: #0f1014; }
     100%      { background: var(--c); }
   }
   .rinfo { position: absolute; bottom: 9px; font-size: 24px; font-variant-numeric: tabular-nums; font-weight: 800;
@@ -118,7 +125,7 @@
   #btnLock { position: relative; overflow: hidden; z-index: 41; }
   #btnLock::after { content: ""; position: absolute; left: 0; bottom: 0; height: 4px; width: 0; background: #fff; }
   #btnLock.charging::after { width: 100%; transition: width 2s linear; }
-  #app.locked #btnLock { background: #b91c1c; }
+  #app.locked #btnLock { background: var(--red); }
   #shield { position: absolute; inset: 0; z-index: 40; display: none; }
   #app.locked #shield { display: block; }
   #app.locked nav, #app.locked #mctl button:not(#btnLock) { opacity: .25; }
@@ -126,8 +133,8 @@
   /* ---------- Bluetooth ---------- */
   .card { background: var(--panel); border-radius: 16px; padding: 14px; margin-bottom: 10px; }
   #btStatusLine { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; }
-  #btDot { width: 14px; height: 14px; border-radius: 50%; background: #c33; flex: none; }
-  #btDot.ok { background: var(--ok); } #btDot.wait { background: #eab308; }
+  #btDot { width: 14px; height: 14px; border-radius: 50%; background: var(--red); flex: none; }
+  #btDot.ok { background: var(--ok); } #btDot.wait { background: var(--orange); }
   #btDevice { color: var(--dim); margin-top: 4px; font-size: 14px; min-height: 18px; }
   #btConnect { width: 100%; font-size: 18px; padding: 16px; }
   #btScroll { flex: 1; overflow-y: auto; min-height: 0; }
@@ -135,12 +142,12 @@
   #btSuccess svg { width: 150px; height: 150px; }
   #btSuccess div { font-size: 22px; font-weight: 700; color: var(--ok); margin-top: 6px; }
   .wz-count { color: var(--dim); font-size: 13px; text-transform: uppercase; letter-spacing: .08em; }
-  #wzNote { color: #fbbf24; font-size: 14px; margin-top: 6px; min-height: 0; }
+  #wzNote { color: var(--orange); font-size: 14px; margin-top: 6px; min-height: 0; }
   #wzTitle { margin: 8px 0 6px; font-size: 20px; }
-  #wzText { margin: 0 0 14px; font-size: 16px; line-height: 1.45; color: #d4d4d8; }
+  #wzText { margin: 0 0 14px; font-size: 16px; line-height: 1.45; color: var(--dim); }
   .wz-q { font-weight: 700; margin-bottom: 8px; font-size: 16px; }
-  #wzYes { background: #15803d; font-size: 17px; padding: 14px; }
-  #wzNo { background: #7f1d1d; font-size: 17px; padding: 14px; }
+  #wzYes { background: var(--green); font-size: 17px; padding: 14px; }
+  #wzNo { background: #6e1822; font-size: 17px; padding: 14px; }
   details.demo { margin-top: 4px; color: var(--dim); }
   details.demo summary { cursor: pointer; padding: 8px 2px; font-size: 14px; }
   details.demo .card { color: var(--fg); }
@@ -154,15 +161,15 @@
   .zname { font-weight: 700; font-size: 16px; }
   .zname small { display: block; color: var(--dim); font-weight: 500; font-size: 13px; }
   .zrow input { width: 100%; font: inherit; font-size: 20px; font-weight: 700; text-align: center; padding: 8px 4px;
-    background: #000; color: var(--fg); border: 1px solid var(--line); border-radius: 10px; }
-  .zrow input.bad { border-color: #ef4444; color: #ef4444; }
+    background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 10px; }
+  .zrow input.bad { border-color: var(--red-text); color: var(--red-text); }
   .zup { color: var(--dim); font-size: 14px; text-align: right; }
   .zhead { display: grid; grid-template-columns: 34px 1fr 84px 72px; gap: 10px; padding: 0 12px 6px; color: var(--dim); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
   .zhead span:nth-child(3), .zhead span:nth-child(4) { text-align: center; }
   .zhead span:nth-child(4) { text-align: right; }
   .note { color: var(--dim); font-size: 13px; line-height: 1.45; margin: 6px 4px; }
   .note i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; }
-  #zMsg { color: #ef4444; font-size: 14px; margin: 4px; min-height: 18px; }
+  #zMsg { color: var(--red-text); font-size: 14px; margin: 4px; min-height: 18px; }
 
   /* ---------- Intervals ---------- */
   #ivSummary { color: var(--dim); font-size: 14px; margin: -4px 2px 8px; display: flex; justify-content: space-between; }
@@ -176,22 +183,22 @@
     font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
   .ivhead span:nth-last-child(-n+2) { text-align: center; }
   .ivrow { padding: 5px 2px; border-top: 1px solid var(--line); background: var(--panel); }
-  .ivrow.dragging { background: #26262c; box-shadow: 0 6px 18px rgba(0,0,0,.6); position: relative; z-index: 3; border-radius: 10px; }
+  .ivrow.dragging { background: var(--panel2); box-shadow: 0 6px 18px rgba(0,0,0,.6); position: relative; z-index: 3; border-radius: 10px; }
   .nr { color: var(--dim); font-size: 13px; text-align: right; }
   .time { display: flex; align-items: center; gap: 2px; font-weight: 700; }
   .time input { width: 42px; font: inherit; font-size: 18px; font-weight: 700; text-align: center; padding: 8px 0;
-    background: #000; color: var(--fg); border: 1px solid var(--line); border-radius: 9px; }
-  .time input.bad { border-color: #ef4444; }
-  .cc { height: 40px; border-radius: 10px; padding: 0; font-size: 14px; font-weight: 800; color: rgba(0,0,0,.7);
+    background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 9px; }
+  .time input.bad { border-color: var(--red-text); }
+  .cc { height: 40px; border-radius: 10px; padding: 0; font-size: 14px; font-weight: 800; color: #000;
     border: 3px solid transparent; transition: transform .1s; }
   .cc.pending { border: 3px dashed #fff; }
   .cc { touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-  .ivrow.editing { background: #26262c; }
+  .ivrow.editing { background: var(--panel2); }
   .ivrow.editing .nr { color: var(--fg); font-weight: 800; }
   .cc.pressing { transform: scale(.92); }
   .ck { display: flex; justify-content: center; align-items: center; height: 40px; }
   .ck input { width: 26px; height: 26px; accent-color: var(--accent); margin: 0; }
-  .ck.del input { accent-color: #ef4444; }
+  .ck.del input { accent-color: var(--red-text); }
   .handle { align-items: center; justify-content: center; height: 40px; color: var(--dim); font-size: 22px;
     touch-action: none; cursor: grab; user-select: none; }
   #ivWrap.locked input, #ivWrap.locked .cc { pointer-events: none; }
@@ -202,27 +209,27 @@
   #ivctl .w3 { grid-column: span 3; }
   .qrrow { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 14px 0 6px; }
   .qrSend, .qrRecv { min-height: 48px; }
-  .qrSend { background: #15803d; }
+  .qrSend { background: var(--green); }
 
   /* ---------- Dialoge & Meldungen ---------- */
-  dialog { background: #17171a; color: var(--fg); border: 1px solid var(--line); border-radius: 18px; padding: 18px;
+  dialog { background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 18px; padding: 18px;
     width: min(92vw, 420px); max-height: 80dvh; }
   dialog::backdrop { background: rgba(0,0,0,.75); }
   dialog h3 { margin: 0 0 12px; }
   dialog input[type=text] { width: 100%; font: inherit; font-size: 18px; padding: 12px; border-radius: 10px;
-    border: 1px solid var(--line); background: #000; color: var(--fg); margin-bottom: 14px; }
+    border: 1px solid var(--line); background: var(--bg); color: var(--fg); margin-bottom: 14px; }
   .lib-item { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
   .lib-item small { display: block; color: var(--dim); }
   .lib-item button { padding: 10px 12px; font-size: 14px; }
   #libList { max-height: 50dvh; overflow-y: auto; margin-bottom: 12px; }
-  #toast { position: absolute; left: 12px; right: 12px; bottom: calc(var(--nav-h) + 12px); z-index: 60; background: #27272a;
+  #toast { position: absolute; left: 12px; right: 12px; bottom: calc(var(--nav-h) + 12px); z-index: 60; background: var(--panel2);
     color: var(--fg); padding: 12px 14px; border-radius: 12px; font-size: 15px; display: none; box-shadow: 0 8px 24px rgba(0,0,0,.6); }
-  #toast.err { background: #450a0a; color: #fecaca; }
+  #toast.err { background: var(--red); color: #fff; }
 
   /* ---------- PWA: Version, Update ---------- */
-  #appVersion { color: #55555c; font-size: 12px; text-align: center; padding: 18px 0 6px; }
+  #appVersion { color: var(--muted); font-size: 12px; text-align: center; padding: 18px 0 6px; }
   #updateBar { position: absolute; left: 10px; right: 10px; top: calc(10px + env(safe-area-inset-top)); z-index: 70;
-    display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #0b2a4a; color: #fff;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--accent); color: #fff;
     padding: 10px 10px 10px 14px; border-radius: 14px; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,.6); }
   #updateBar[hidden] { display: none; }
   #updateBar button { padding: 10px 14px; }
@@ -243,7 +250,7 @@
       <button id="btConnect" class="primary">Verbinden</button>
       <div id="btScroll">
         <div id="btSuccess" hidden>
-          <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#15803d"/><path d="M28 52 L44 67 L73 36" stroke="#fff" stroke-width="10" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#247d4d"/><path d="M28 52 L44 67 L73 36" stroke="#fff" stroke-width="10" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <div>Verbindung steht</div>
         </div>
         <div id="wizard" class="card" hidden style="margin-top:10px">
@@ -253,16 +260,16 @@
           <p id="wzText"></p>
           <div class="wz-q">Ist das Problem behoben?</div>
           <div class="row"><button id="wzYes">Ja</button><button id="wzNo">Nein</button></div>
-          <button id="wzAll" style="width:100%;margin-top:10px;background:transparent;color:#a1a1aa;font-weight:500;font-size:14px">Uhr nicht in der Liste? Alle Bluetooth-Geräte anzeigen</button>
+          <button id="wzAll" style="width:100%;margin-top:10px;background:transparent;color:var(--dim);font-weight:500;font-size:14px">Uhr nicht in der Liste? Alle Bluetooth-Geräte anzeigen</button>
         </div>
         <div id="wzEnd" class="card" hidden style="margin-top:10px">
           <h3 style="margin:0 0 8px">Alle Schritte durchlaufen</h3>
-          <p style="color:#d4d4d8;line-height:1.45;margin:0 0 12px">Leider kam keine Verbindung zustande. Prüfe, ob eine andere App (z. B. eine Fahrrad-App) gerade mit dem Puls-Signal der Uhr verbunden ist – die Uhr kann meist nur ein Gerät gleichzeitig beliefern.</p>
+          <p style="color:var(--dim);line-height:1.45;margin:0 0 12px">Leider kam keine Verbindung zustande. Prüfe, ob eine andere App (z. B. eine Fahrrad-App) gerade mit dem Puls-Signal der Uhr verbunden ist – die Uhr kann meist nur ein Gerät gleichzeitig beliefern.</p>
           <button id="wzRestart" style="width:100%">Von vorn beginnen</button>
         </div>
         <div id="installCard" class="card" hidden style="margin-top:10px">
           <h3 style="margin:0 0 6px">App installieren</h3>
-          <p id="installText" style="color:#d4d4d8;line-height:1.45;margin:0 0 12px">Mit einem Tipp landet die App als eigenes Symbol auf deinem Startbildschirm und startet ohne Browserleiste.</p>
+          <p id="installText" style="color:var(--dim);line-height:1.45;margin:0 0 12px">Mit einem Tipp landet die App als eigenes Symbol auf deinem Startbildschirm und startet ohne Browserleiste.</p>
           <button id="installBtn" class="primary" style="width:100%">Jetzt installieren</button>
         </div>
         <details class="demo" id="demoBox">
@@ -307,8 +314,8 @@
       <div class="zhead"><span></span><span>Zone</span><span>ab bpm</span><span>bis</span></div>
       <div id="zList"></div>
       <div id="zMsg"></div>
-      <p class="note"><i style="background:#3f3f46"></i>Unter Zone 1: dunkelgrau &nbsp; <i style="background:#161618;border:1px solid #333"></i>Kein Signal: fast schwarz</p>
-      <p class="note"><i style="background:#a855f7"></i>Lila gibt es nur in Intervallen: Abschnitt ohne Puls-Sollwert (z. B. Hochfahren, Ausrollen).</p>
+      <p class="note"><i style="background:#34363d"></i>Unter Zone 1: dunkelgrau &nbsp; <i style="background:#1d1f27;border:1px solid #4a4c55"></i>Kein Signal: anthrazit</p>
+      <p class="note"><i style="background:#717378"></i>Grau („frei“) gibt es nur in Intervallen: Abschnitt ohne Puls-Sollwert (z. B. Ein- und Ausfahren).</p>
       <div class="qrrow"><button class="qrSend">QR fürs Handy</button><button class="qrRecv">QR einlesen</button></div>
       <p class="note">„QR fürs Handy“ überträgt Zonen, aktuelle Intervall-Tabelle und gesicherte Liste. Am Handy „QR einlesen“ tippen. Dort wird nichts gelöscht; jeweils die neuere Fassung gewinnt.</p>
     </section>
@@ -359,7 +366,7 @@
 
   <dialog id="dlgResume">
     <h3>Training fortsetzen?</h3>
-    <p id="resumeText" style="color:#d4d4d8;line-height:1.45;margin:0 0 16px"></p>
+    <p id="resumeText" style="color:var(--dim);line-height:1.45;margin:0 0 16px"></p>
     <div class="row"><button id="resumeNo">Verwerfen</button><button id="resumeYes" class="primary">Fortsetzen</button></div>
   </dialog>
 
@@ -381,8 +388,15 @@
   const $ = id => document.getElementById(id);
 
   // ---------- Farben & Grunddaten ----------
-  const ZONE_COLORS = ["#8fa3bf", "#3b82f6", "#22c55e", "#f59e0b", "#ef4444"];
-  const FREE = "#a855f7", BELOW = "#3f3f46", NOSIG = "#161618";
+  const ZONE_COLORS = ["#00b5a6", "#124f92", "#247d4d", "#f9a73b", "#cc2d3f"];   // ao-Farbwelt Z1–Z5
+  const FREE = "#717378", BELOW = "#34363d", NOSIG = "#1d1f27";
+  // Schriftfarbe mit dem größten Kontrast zur Fläche (WCAG-Kontrastverhältnis): reines Schwarz oder reines Weiß
+  const lum = hex => {
+    const v = [1, 3, 5].map(k => parseInt(hex.slice(k, k + 2), 16) / 255)
+      .map(x => x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4);
+    return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+  };
+  const bestText = bg => { const l = lum(bg); return (l + 0.05) / 0.05 >= 1.05 / (l + 0.05) ? "#000" : "#fff"; };
   const COLORS6 = [...ZONE_COLORS, FREE];
   const LABELS6 = ["Z1", "Z2", "Z3", "Z4", "Z5", "frei"];
   const ZNAMES = ["Aufwärmen", "Fettverbrennung", "Aerob", "Anaerob", "Maximum"];
@@ -779,13 +793,6 @@
   const ARROW_STEPS = [8, 12];
   const CHECK_STEPS = [5000, 15000, 25000];   // ms in der Soll-Zone für 1 / 2 / 3 Haken
   let inZoneSince = 0;   // bis 8 bpm: 1 Pfeil, 9–12 bpm: 2 Pfeile, ab 13 bpm: 3 Pfeile
-  // Schriftfarbe mit dem größten Kontrast zur Fläche (WCAG-Kontrastverhältnis): reines Schwarz oder reines Weiß
-  const lum = hex => {
-    const v = [1, 3, 5].map(k => parseInt(hex.slice(k, k + 2), 16) / 255)
-      .map(x => x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4);
-    return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
-  };
-  const bestText = bg => { const l = lum(bg); return (l + 0.05) / 0.05 >= 1.05 / (l + 0.05) ? "#000" : "#fff"; };   // bpm-Grenzen für 1 / 2 / 3 Pfeile
   function renderMeasure() {
     const now = Date.now();
     const ok = signalOk();
@@ -805,6 +812,8 @@
     const c = $("circle"), r = $("rect");
     c.textContent = ok ? hr : "--";
     c.style.setProperty("--c", cur);
+    const ctx = bestText(cur);   // Zahl in Kontrastfarbe, Rand in der Gegenfarbe (bleibt auch beim Blinken lesbar)
+    c.style.setProperty("--ctxt", ctx); c.style.setProperty("--cstroke", ctx === "#000" ? "#fff" : "#000");
     const blink = target !== null && target < 5 && ok && z !== target;
     // Abstand zur Soll-Zone in bpm → Anzahl Pfeile (siehe ARROW_STEPS)
     let gap = 0;
@@ -949,7 +958,7 @@
         <span class="handle">≡</span>
         <span class="nr">${i + 1}</span>
         <span class="time"><input class="mm" type="text" inputmode="numeric" maxlength="2" value="${r.m}" ${st.locked ? "disabled" : ""}>:<input class="ss" type="text" inputmode="numeric" maxlength="2" value="${pad(r.s)}" ${st.locked ? "disabled" : ""}></span>
-        <button class="cc" style="background:${COLORS6[r.c]}">${LABELS6[r.c]}</button>
+        <button class="cc" style="background:${COLORS6[r.c]};color:${bestText(COLORS6[r.c])}">${LABELS6[r.c]}</button>
         <label class="ck"><input type="checkbox" class="cp" ${r.copy ? "checked" : ""} ${st.locked ? "disabled" : ""}></label>
         <label class="ck del"><input type="checkbox" class="dl" ${r.del ? "checked" : ""} ${st.locked ? "disabled" : ""}></label>
       </div>`).join("");
@@ -1029,7 +1038,7 @@
     if (navigator.vibrate) try { navigator.vibrate(30); } catch {}
   }
   function paintCell(btn, c, isPending) {
-    btn.style.background = COLORS6[c]; btn.textContent = LABELS6[c];
+    btn.style.background = COLORS6[c]; btn.style.color = bestText(COLORS6[c]); btn.textContent = LABELS6[c];
     btn.classList.toggle("pending", isPending);
     const row = btn.closest(".ivrow"); if (row) row.classList.toggle("editing", isPending);
   }
@@ -1174,7 +1183,7 @@
       $("dlgLoad").close(); toast(`„${n}“ geladen.`);
     } else if (b.dataset.a === "del") {
       if (b.dataset.sure) { delete st.lib[n]; delete st.libTs[n]; save("lib", st.lib); save("libTs", st.libTs); renderLib(); }
-      else { b.dataset.sure = "1"; b.textContent = "Sicher?"; b.style.background = "#b91c1c"; }
+      else { b.dataset.sure = "1"; b.textContent = "Sicher?"; b.style.background = "var(--red)"; }
     }
   });
 

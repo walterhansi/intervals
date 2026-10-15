@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ao Puls – Anleitung</title>
 <style>
-  :root { --bg: #000; --panel: #121214; --line: #2a2a30; --fg: #f2f2f2; --dim: #a1a1aa; --accent: #0a84ff; }
+  :root { --bg: #131419; --panel: #1d1f27; --line: #34363d; --fg: #ffffff; --dim: #b8bac1; --accent: #4f9bea; }
   html, body { margin: 0; background: var(--bg); color: var(--fg); }
   body { font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding: 16px 16px 40px; max-width: 720px; margin: 0 auto; }
   h1 { font-size: 24px; margin: 4px 0 2px; }
@@ -18,7 +18,7 @@
   ul, ol { margin: 6px 0; padding-left: 22px; }
   li { margin: 3px 0; }
   b { font-weight: 700; }
-  .k { display: inline-block; background: #1c1c20; border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; font-size: 14px; white-space: nowrap; }
+  .k { display: inline-block; background: #2a2c35; border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; font-size: 14px; white-space: nowrap; }
   .card { background: var(--panel); border-radius: 12px; padding: 10px 14px; margin: 10px 0; }
   .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; }
   table { border-collapse: collapse; width: 100%; font-size: 15px; margin: 6px 0; }
@@ -45,6 +45,7 @@
 
 <h2 id="anzeige">Anzeige lesen (Measure)</h2>
 <table>
+  <tr><td>Zonenfarben</td><td><span class="sw" style="background:#00b5a6"></span>Z1 <span class="sw" style="background:#124f92"></span>Z2 <span class="sw" style="background:#247d4d"></span>Z3 <span class="sw" style="background:#f9a73b"></span>Z4 <span class="sw" style="background:#cc2d3f"></span>Z5</td></tr>
   <tr><td>Kreis</td><td>Dein <b>aktueller Puls</b>, gefärbt nach der Zone, in der du gerade bist.</td></tr>
   <tr><td>Fläche</td><td>Im Intervall die <b>Soll-Zone</b> des laufenden Abschnitts. Ohne Intervall hat sie die Farbe des Kreises.</td></tr>
   <tr><td>Gleiche Farbe</td><td>Du triffst das Soll. Oben mittig erscheinen <b>Haken</b>: 1 nach 5 s, 2 nach 15 s, 3 nach 25 s.</td></tr>
@@ -53,7 +54,7 @@
   <tr><td>„Gleich: …“</td><td>5 s vor dem Wechsel: nächste Zone oben als Text, Rand in der neuen Farbe.</td></tr>
   <tr><td>Unten</td><td><b>Intervall</b> = Restzeit des Abschnitts · <b>SOLL</b> = Pulsbereich · <b>Training</b> = Gesamtzeit.</td></tr>
 </table>
-<p class="note"><span class="sw" style="background:#3f3f46"></span>Dunkelgrau: unter Zone 1 · <span class="sw" style="background:#161618;border:1px solid #444"></span>fast schwarz, „--“: kein Signal · <span class="sw" style="background:#a855f7"></span>Lila: Abschnitt „frei“ ohne Sollwert (Ein-/Ausfahren) – dann keine Pfeile und Haken.</p>
+<p class="note"><span class="sw" style="background:#34363d"></span>Dunkelgrau: unter Zone 1 · <span class="sw" style="background:#1d1f27;border:1px solid #4a4c55"></span>Anthrazit, „--“: kein Signal · <span class="sw" style="background:#717378"></span>Grau: Abschnitt „frei“ ohne Sollwert (Ein-/Ausfahren) – dann keine Pfeile und Haken.</p>
 
 <h2 id="faelle">Typische Anwendungsfälle</h2>
 

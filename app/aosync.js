@@ -79,28 +79,28 @@
     const st = document.createElement('style');
     st.id = 'aos-style';
     st.textContent = `
-      #aos-dlg { border: 0; padding: 0; background: #16181c; color: #f2f2f2; border-radius: 16px;
+      #aos-dlg { border: 0; padding: 0; background: var(--aos-bg, #16181c); color: var(--aos-text, #f2f2f2); border-radius: 16px;
         width: min(560px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); box-shadow: 0 10px 40px rgba(0,0,0,.7);
         font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
       #aos-dlg::backdrop { background: rgba(0,0,0,.75); }
       #aos-dlg .aos-in { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
       #aos-dlg h3 { margin: 0; font-size: 1.2rem; }
-      #aos-dlg p { margin: 0; line-height: 1.45; color: #c9cbd1; }
+      #aos-dlg p { margin: 0; line-height: 1.45; color: var(--aos-dim, #c9cbd1); }
       #aos-dlg .aos-qr { background: #fff; border-radius: 10px; padding: 10px; align-self: center;
         width: min(460px, 100%, 62dvh); aspect-ratio: 1; box-sizing: border-box; }
       #aos-dlg .aos-qr canvas { width: 100%; height: 100%; image-rendering: pixelated; display: block; }
       #aos-dlg .aos-cam { position: relative; background: #000; border-radius: 10px; overflow: hidden; aspect-ratio: 1; width: 100%; max-height: 60dvh; }
       #aos-dlg video { width: 100%; height: 100%; object-fit: cover; display: block; }
       #aos-dlg .aos-frame { position: absolute; inset: 14%; border: 3px solid rgba(255,255,255,.85); border-radius: 14px; pointer-events: none; }
-      #aos-dlg .aos-status { font-weight: 600; color: #f2f2f2; min-height: 1.4em; }
+      #aos-dlg .aos-status { font-weight: 600; color: var(--aos-text, #f2f2f2); min-height: 1.4em; }
       #aos-dlg .aos-status:empty { display: none; }
-      #aos-dlg .aos-bar { height: 8px; background: #2a2d33; border-radius: 4px; overflow: hidden; }
-      #aos-dlg .aos-bar i { display: block; height: 100%; width: 0; background: #22c55e; transition: width .2s; }
-      #aos-dlg .aos-res { white-space: pre-line; color: #f2f2f2; }
-      #aos-dlg .aos-err { color: #ff8a8a; }
+      #aos-dlg .aos-bar { height: 8px; background: var(--aos-btn, #2a2d33); border-radius: 4px; overflow: hidden; }
+      #aos-dlg .aos-bar i { display: block; height: 100%; width: 0; background: var(--aos-ok, #22c55e); transition: width .2s; }
+      #aos-dlg .aos-res { white-space: pre-line; color: var(--aos-text, #f2f2f2); }
+      #aos-dlg .aos-err { color: var(--aos-err, #ff8a8a); }
       #aos-dlg button { font: inherit; font-weight: 600; min-height: 48px; border-radius: 12px; border: 0;
-        background: #2a2d33; color: #f2f2f2; cursor: pointer; }
-      #aos-dlg button.aos-primary { background: #0a84ff; }
+        background: var(--aos-btn, #2a2d33); color: var(--aos-text, #f2f2f2); cursor: pointer; }
+      #aos-dlg button.aos-primary { background: var(--aos-primary, #0a84ff); color: #fff; }
     `;
     document.head.append(st);
   }

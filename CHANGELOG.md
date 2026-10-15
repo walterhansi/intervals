@@ -6,6 +6,12 @@ Format: neueste Version oben. Die Versionsnummer steht in der Datei `VERSION`.
 - **x.Y.0** (Minor): neue Funktionen
 - **X.0.0** (Major): grundlegende Umbauten
 
+## 1.7.0 – 2026-10-15
+
+- **Neue ao-Farbwelt:** Anthrazit-Hintergrund (#131419, Flächen #1d1f27) und neue Zonenfarben – Z1 Türkis #00b5a6, Z2 Blau #124f92, Z3 Grün #247d4d, Z4 Orange #f9a73b, Z5 Rot #cc2d3f. „frei“ ist jetzt Grau #717378 statt Lila.
+- Alle Schriften auf farbigen Flächen (Pulszahl, Infozeile, „Gleich: …“, Zonenfelder in Intervals) wählen automatisch Schwarz oder Weiß – je nachdem, was mehr Kontrast ergibt.
+- Anleitung und QR-Dialog in derselben Farbwelt.
+
 ## 1.6.0 – 2026-10-14
 
 - **Anleitung** für den Sportler (`anleitung.html`): Schnellstart, Anzeige lesen, typische Anwendungsfälle, Intervalle bauen, PC → Handy, unterwegs, Probleme. Aufruf über ein kleines „?“ oben rechts auf Bluetooth, Zones und Intervals; öffnet im App-Fenster, Bluetooth und Training laufen weiter. Auch offline verfügbar.
