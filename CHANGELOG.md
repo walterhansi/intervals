@@ -6,6 +6,12 @@ Format: neueste Version oben. Die Versionsnummer steht in der Datei `VERSION`.
 - **x.Y.0** (Minor): neue Funktionen
 - **X.0.0** (Major): grundlegende Umbauten
 
+## 1.7.1 – 2026-10-15
+
+- **Neuladen bringt sofort die neue Version:** Die App lädt ihre Dateien jetzt zuerst aus dem Netz und nur ohne Netz (oder wenn es länger als 3 Sekunden dauert) aus dem Speicher. Am PC genügt deshalb einfaches Neuladen. Der Hinweis „Neue Version verfügbar“ erscheint dann nicht mehr unnötig.
+- Läuft die App am Handy gerade, kommt wie bisher „Aktualisieren“ – nie mitten im Training.
+- Einmalig beim Umstieg von 1.7.0 ist noch „Aktualisieren“ nötig, danach gilt das neue Verhalten.
+
 ## 1.7.0 – 2026-10-15
 
 - **Neue ao-Farbwelt:** Anthrazit-Hintergrund (#131419, Flächen #1d1f27) und neue Zonenfarben – Z1 Türkis #00b5a6, Z2 Blau #124f92, Z3 Grün #247d4d, Z4 Orange #f9a73b, Z5 Rot #cc2d3f. „frei“ ist jetzt Grau #717378 statt Lila.

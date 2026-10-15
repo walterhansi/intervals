@@ -1321,8 +1321,21 @@
   // ---------- Updates (Service Worker) ----------
   // Eine neue Version wird erst übernommen, wenn du auf „Aktualisieren“ tippst –
   // nie automatisch mitten im Training.
-  let waitingWorker = null, reloading = false;
-  function offerUpdate(w) {
+  let waitingWorker = null, reloading = false, silentSwap = false;
+  function askVersion(w) {
+    return new Promise(res => {
+      try {
+        const ch = new MessageChannel();
+        const t = setTimeout(() => res(null), 1500);
+        ch.port1.onmessage = e => { clearTimeout(t); res(e.data); };
+        w.postMessage({ type: "VERSION" }, [ch.port2]);
+      } catch { res(null); }
+    });
+  }
+  async function offerUpdate(w) {
+    // Ist diese Seite schon die neue Version (z. B. nach Neuladen am PC), still übernehmen – kein Hinweis, kein Neuladen
+    const v = await askVersion(w);
+    if (v && v === APP_VERSION) { silentSwap = true; w.postMessage({ type: "SKIP_WAITING" }); return; }
     waitingWorker = w;
     if (!train.running) $("updateBar").hidden = false;
   }
@@ -1331,7 +1344,7 @@
   $("btnStop").addEventListener("click", () => { if (waitingWorker) $("updateBar").hidden = false; });
 
   if ("serviceWorker" in navigator && location.protocol !== "file:") {
-    navigator.serviceWorker.addEventListener("controllerchange", () => { if (!reloading) { reloading = true; location.reload(); } });
+    navigator.serviceWorker.addEventListener("controllerchange", () => { if (silentSwap) { silentSwap = false; return; } if (!reloading) { reloading = true; location.reload(); } });
     navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(reg => {
       if (reg.waiting && navigator.serviceWorker.controller) offerUpdate(reg.waiting);
       reg.addEventListener("updatefound", () => {

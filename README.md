@@ -20,7 +20,7 @@ Auf der Amazfit Active 2 die App **Herzfrequenz-Push** öffnen und das Senden pe
 
 ## Updates
 
-Jede Änderung in diesem Repository wird automatisch geprüft und veröffentlicht (GitHub Actions → GitHub Pages). Die installierte App merkt das beim nächsten Öffnen und zeigt oben **„Neue Version verfügbar – Aktualisieren“**. Während eines laufenden Trainings wird nicht aktualisiert; der Hinweis kommt erst nach „Stopp“.
+Jede Änderung in diesem Repository wird automatisch geprüft und veröffentlicht (GitHub Actions → GitHub Pages). Am PC genügt **Neuladen** – die App holt sich ihre Dateien zuerst aus dem Netz (ohne Netz aus dem Speicher). Läuft die App am Handy gerade, erscheint oben **„Neue Version verfügbar – Aktualisieren“**. Während eines laufenden Trainings wird nicht aktualisiert; der Hinweis kommt erst nach „Stopp“.
 
 Welche Version läuft, steht ganz unten auf dem Bluetooth-Screen, z. B. „Version 1.0.0 (Build 3)“.
 
