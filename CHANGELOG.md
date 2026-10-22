@@ -6,6 +6,12 @@ Format: neueste Version oben. Die Versionsnummer steht in der Datei `VERSION`.
 - **x.Y.0** (Minor): neue Funktionen
 - **X.0.0** (Major): grundlegende Umbauten
 
+## 1.8.0 – 2026-10-22
+
+- **Infozeile** („Intervall“, „SOLL“, „Training“ und Zahlen) immer weiß auf einem durchgehenden schwarzen Band am unteren Rand.
+- **Pfeile und Haken** immer weiß auf schwarzem Feld; die Pfeile stehen jetzt nebeneinander statt untereinander.
+- Pulskreis mit Ring so platziert, dass er weder Pfeile/Haken noch das Infoband berührt.
+
 ## 1.7.1 – 2026-10-15
 
 - **Neuladen bringt sofort die neue Version:** Die App lädt ihre Dateien jetzt zuerst aus dem Netz und nur ohne Netz (oder wenn es länger als 3 Sekunden dauert) aus dem Speicher. Am PC genügt deshalb einfaches Neuladen. Der Hinweis „Neue Version verfügbar“ erscheint dann nicht mehr unnötig.
